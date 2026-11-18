@@ -139,7 +139,7 @@ func TestRevocationAndDeclineAreTerminal(t *testing.T) {
 				testutil.Must(t, f.Service.Decline(context.Background(), f.Actor(user), offer))
 				testutil.Must(t, f.Service.Decline(context.Background(), f.Actor(user), offer))
 			} else {
-				testutil.Must(t, f.Service.Cancel(context.Background(), f.Actor(f.Admin), slot, true))
+				testutil.Must(t, f.Service.Cancel(context.Background(), f.Actor(f.Admin), slot, true, ""))
 				testutil.Must(t, f.Service.Allocate(context.Background(), f.Org, slot))
 			}
 			if _, e := f.Service.Accept(context.Background(), f.Actor(user), offer, "terminal-replay-key"); !errors.Is(e, appointments.ErrConflict) {
@@ -290,5 +290,26 @@ func TestPendingOfferBlocksOverlappingBooking(t *testing.T) {
 	testutil.Must(t, f.Service.Allocate(context.Background(), f.Org, first))
 	if _, e := f.Service.Book(context.Background(), f.Actor(f.Students[0]), second, "pending-overlap-key"); !errors.Is(e, appointments.ErrConflict) {
 		t.Fatal("pending offer failed to reserve student time")
+	}
+}
+func TestCancellationRetryCannotCancelReplacementBooking(t *testing.T) {
+	f := testutil.New(t, 2)
+	ctx := context.Background()
+	slot := f.Slot(t, f.Start)
+	f.Entry(t, f.Students[0], 1, true)
+	original, e := f.Service.Book(ctx, f.Actor(f.Students[1]), slot, "original-booking-key")
+	testutil.Must(t, e)
+	testutil.Must(t, f.Service.Cancel(ctx, f.Actor(f.Admin), slot, false, original))
+	offer, user := f.Offer(t, slot)
+	replacement, e := f.Service.Accept(ctx, f.Actor(user), offer, "replacement-accept-key")
+	testutil.Must(t, e)
+	testutil.Must(t, f.Service.Cancel(ctx, f.Actor(f.Admin), slot, false, original))
+	if f.Count(t, `SELECT count(*) FROM bookings WHERE id=$1 AND state='confirmed'`, replacement) != 1 {
+		t.Fatal("a cancellation retry canceled the replacement student's booking")
+	}
+	code, _, e := f.Request(f.Admin, "POST", fmt.Sprintf("/api/orgs/%s/slots/%s/cancel", f.Org, slot), map[string]string{"booking_id": original}, "retried-cancellation-key")
+	testutil.Must(t, e)
+	if code != 200 || f.Count(t, `SELECT count(*) FROM bookings WHERE id=$1 AND state='confirmed'`, replacement) != 1 {
+		t.Fatal("HTTP cancellation retry changed the replacement booking")
 	}
 }

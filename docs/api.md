@@ -25,7 +25,7 @@ Magic links are single-use, expire after 15 minutes, and store only token hashes
 | GET `/dashboard` | member | `{server_time,services,tutors,slots,bookings,offers,waitlist,members?}`; role-specific projections |
 | POST `/slots` | admin, assigned tutor | `{tutor_id,service_id,starts_at}`; RFC3339 instant with offset; end derives from subject duration; 201 `{id}` |
 | POST `/slots/{id}/book` | student | no body; `Idempotency-Key` required; 201 `{id}` |
-| POST `/slots/{id}/cancel` | admin, assigned tutor, booked owner | no body; 200; cancels booking and allocates replacement atomically |
+| POST `/slots/{id}/cancel` | admin, assigned tutor, booked owner | `{booking_id}` identifying the original booking; 200; cancellation and replacement allocation are atomic; retries preserve any replacement booking |
 | POST `/slots/{id}/close` | admin, assigned tutor | no body; 200; closes slot, cancels booking/revokes pending offer |
 | POST `/waitlist` | student | `{service_id,preferences:{timezone,windows:[{day:1,start:"09:00",end:"17:00"}]}}`; 201 `{id}` |
 | PATCH `/waitlist/{id}` | entry owner | `{status:"active"|"paused"|"withdrawn",preferences?:...}`; pending offer must be resolved first |

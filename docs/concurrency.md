@@ -19,6 +19,8 @@ The deadline check is the acceptance decision point after locks are acquired; an
 
 Same-offer acceptance retries return its existing confirmed booking. After cancellation, a new request with a new idempotency key cannot resurrect that booking. A matching stored key returns the original operation result without changing state. Keys are scoped to authenticated user and operation, retained for 30 days, and never grant ownership of another user's offer.
 
+Cancellation also carries the original booking ID. After the slot lock is acquired, the service checks that exact booking's ownership and state. Retrying a completed cancellation returns success for the old booking even if a replacement student has since accepted the slot. It never interprets a retry as permission to cancel the current replacement booking. Closing an entire slot is a separate staff-only resource operation.
+
 ## FIFO evaluation
 
 Entries are read in `(joined_at,id)` order. Availability is calculated independently using their IANA zone and entire slot interval, including timezone-offset transitions. Prior offers, inactive status, disabled participation, conflicting active reservations, and an existing pending entry offer are recorded exclusions.

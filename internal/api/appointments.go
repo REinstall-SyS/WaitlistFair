@@ -77,7 +77,20 @@ func (s *Server) cancelAction(w http.ResponseWriter, r *http.Request, close bool
 	if e != nil {
 		return e
 	}
-	if e = s.Appointments.Cancel(r.Context(), a, id, close); e != nil {
+	var bookingID string
+	if !close {
+		var body struct {
+			BookingID string `json:"booking_id"`
+		}
+		if e = decode(w, r, &body); e != nil {
+			return e
+		}
+		if !validID(body.BookingID) {
+			return badRequest("Choose the booking to cancel.")
+		}
+		bookingID = body.BookingID
+	}
+	if e = s.Appointments.Cancel(r.Context(), a, id, close, bookingID); e != nil {
 		return e
 	}
 	JSON(w, 200, map[string]bool{"ok": true})

@@ -392,7 +392,9 @@ export function Schedules({ mode }: { mode: string }) {
                 action &&
                 (await run(
                   `/orgs/${org.id}/slots/${action.slot.id}/${action.kind}`,
-                  undefined,
+                  action.kind === "cancel"
+                    ? { booking_id: action.slot.booking_id }
+                    : undefined,
                   "POST",
                   action.kind === "book"
                     ? "Appointment confirmed. We’ll see you there!"

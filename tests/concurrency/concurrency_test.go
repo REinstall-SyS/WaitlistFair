@@ -95,9 +95,9 @@ func TestTwoWorkersAndDuplicateCancellation(t *testing.T) {
 	f := testutil.New(t, 3)
 	slot := f.Slot(t, f.Start)
 	f.Entry(t, f.Students[0], 3, true)
-	_, e := f.Service.Book(context.Background(), f.Actor(f.Students[2]), slot, "initial-booking-key")
+	booking, e := f.Service.Book(context.Background(), f.Actor(f.Students[2]), slot, "initial-booking-key")
 	testutil.Must(t, e)
-	race(2, func(i int) { _ = f.Service.Cancel(context.Background(), f.Actor(f.Admin), slot, false) })
+	race(2, func(i int) { _ = f.Service.Cancel(context.Background(), f.Actor(f.Admin), slot, false, booking) })
 	race(2, func(i int) { _ = f.Service.Allocate(context.Background(), f.Org, slot) })
 	if f.Count(t, `SELECT count(*) FROM offers WHERE slot_id=$1`, slot) != 1 {
 		t.Fatal("duplicate workers created multiple offers")

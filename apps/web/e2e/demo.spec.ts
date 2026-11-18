@@ -241,12 +241,18 @@ test("real email sign-in, waitlist, cancellation, safe acceptance, audit, expiry
   const sam = await samContext.newPage();
   await signIn(sam, "sam");
   const secondSlot = "50000000-0000-4000-8000-000000000004";
-  expect(
-    (await mutate(sam, `/orgs/${org}/slots/${secondSlot}/book`)).status,
-  ).toBe(201);
+  const secondBooking = await mutate(
+    sam,
+    `/orgs/${org}/slots/${secondSlot}/book`,
+  );
+  expect(secondBooking.status).toBe(201);
   if (process.env.FAULT_TESTS === "1") compose("stop", "worker");
   expect(
-    (await mutate(admin, `/orgs/${org}/slots/${secondSlot}/cancel`)).status,
+    (
+      await mutate(admin, `/orgs/${org}/slots/${secondSlot}/cancel`, {
+        booking_id: secondBooking.body.id,
+      })
+    ).status,
   ).toBe(200);
   if (process.env.FAULT_TESTS === "1") {
     compose("restart", "db");

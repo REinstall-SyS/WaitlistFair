@@ -17,6 +17,7 @@ export type User = {
 export type Me = { user: User; organizations: Organization[] };
 export type Slot = {
   id: string;
+  booking_id: string | null;
   service_id: string;
   tutor_id: string;
   starts_at: string;

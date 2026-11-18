@@ -175,7 +175,7 @@ func (s *Service) notify(ctx context.Context, tx pgx.Tx, kind, user, subject, bo
 	}
 	return Event(ctx, tx, kind, map[string]string{"to": email, "subject": subject, "body": body})
 }
-func (s *Service) Cancel(ctx context.Context, a Actor, slotID string, closeSlot bool) error {
+func (s *Service) Cancel(ctx context.Context, a Actor, slotID string, closeSlot bool, bookingID string) error {
 	return s.transaction(ctx, func(tx pgx.Tx) error {
 		if e := Authorize(ctx, tx, a); e != nil {
 			return e
@@ -190,17 +190,28 @@ func (s *Service) Cancel(ctx context.Context, a Actor, slotID string, closeSlot 
 		if closeSlot && a.Role == "student" {
 			return ErrForbidden
 		}
-		if slot.State == "closed" {
-			return nil
-		}
-		if !closeSlot && slot.State == "available" {
-			if a.Role == "student" {
+		// Cancellation identifies the original booking, so a retry cannot cancel
+		// a replacement that has since accepted an offer for the same slot.
+		if !closeSlot {
+			if bookingID == "" {
 				return ErrConflict
 			}
-			return nil
+			var originalUser, originalState string
+			if e = tx.QueryRow(ctx, `SELECT student_id,state FROM bookings WHERE id=$1 AND slot_id=$2 AND organization_id=$3`, bookingID, slotID, a.OrgID).Scan(&originalUser, &originalState); e != nil {
+				return ErrNotFound
+			}
+			if a.Role == "student" && originalUser != a.UserID {
+				return ErrForbidden
+			}
+			if originalState == "canceled" {
+				return nil
+			}
+			if slot.State != "booked" {
+				return ErrConflict
+			}
 		}
-		if !closeSlot && slot.State == "offer_pending" {
-			return ErrConflict
+		if slot.State == "closed" {
+			return nil
 		}
 		var user string
 		if slot.State == "booked" {
