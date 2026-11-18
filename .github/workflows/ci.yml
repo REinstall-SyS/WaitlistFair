@@ -1,0 +1,98 @@
+name: Verify WaitlistFair
+on:
+ push:
+ pull_request:
+ workflow_dispatch:
+permissions:
+ contents: read
+concurrency:
+ group: verify-${{ github.ref }}
+ cancel-in-progress: true
+jobs:
+ backend:
+  runs-on: ubuntu-latest
+  services:
+   postgres:
+    image: postgres:18-alpine
+    env: {POSTGRES_PASSWORD: test, POSTGRES_DB: waitlistfair_test}
+    ports: ["5432:5432"]
+    options: >-
+     --health-cmd "pg_isready -U postgres" --health-interval 3s --health-timeout 3s --health-retries 20
+  env:
+   TEST_DATABASE_URL: postgres://postgres:test@localhost:5432/waitlistfair_test?sslmode=disable
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-go@v6
+     with: {go-version: '1.27.4', cache: false}
+   - name: Resolve modules and normalize Go source
+     run: |
+      go mod tidy
+      gofmt -w cmd internal db/embed.go tests
+      tar -czf /tmp/go-source.tgz cmd internal db/embed.go tests go.mod go.sum
+   - name: Go vet
+     run: go vet ./...
+   - name: Unit, migration, integration and concurrency tests with race detector
+     run: go test -race -count=1 -v ./... | tee /tmp/backend-tests.txt
+   - name: Formatting and module checks
+     run: git diff --exit-code -- '*.go' go.mod go.sum
+   - name: Record runner conditions
+     if: always()
+     run: |
+      uname -a > /tmp/runner.txt
+      lscpu >> /tmp/runner.txt
+      free -h >> /tmp/runner.txt
+      go version >> /tmp/runner.txt
+   - uses: actions/upload-artifact@v4
+     if: always()
+     with:
+      name: backend-evidence
+      path: |
+       /tmp/go-source.tgz
+       /tmp/backend-tests.txt
+       /tmp/runner.txt
+ frontend:
+  runs-on: ubuntu-latest
+  defaults: {run: {working-directory: apps/web}}
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-node@v4
+     with: {node-version: '24', cache: npm, cache-dependency-path: apps/web/package-lock.json}
+   - run: npm ci
+   - run: npm run lint
+   - run: npm run typecheck
+   - run: npm test
+   - run: npm run build
+   - run: npm audit --omit=dev --audit-level=high
+ compose-demo:
+  runs-on: ubuntu-latest
+  timeout-minutes: 25
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-go@v6
+     with: {go-version: '1.27.4', cache: false}
+   - run: go mod tidy
+   - uses: actions/setup-node@v4
+     with: {node-version: '24', cache: npm, cache-dependency-path: apps/web/package-lock.json}
+   - run: docker compose up --build -d --wait --wait-timeout 180
+   - run: npm ci
+     working-directory: apps/web
+   - run: npx playwright install --with-deps chromium
+     working-directory: apps/web
+   - name: Real email workflow, expired offer, PostgreSQL restart and worker recovery
+     run: npm run test:e2e
+     working-directory: apps/web
+     env: {FAULT_TESTS: '1'}
+   - name: Capture service logs
+     if: always()
+     run: docker compose logs --no-color > /tmp/compose.log
+   - uses: actions/upload-artifact@v4
+     if: always()
+     with:
+      name: compose-demo-evidence
+      path: |
+       docs/screenshots
+       apps/web/playwright-report
+       apps/web/test-results
+       /tmp/compose.log
+   - run: docker compose down -v
+     if: always()

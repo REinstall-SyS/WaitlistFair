@@ -1,0 +1,71 @@
+name: waitlistfair
+services:
+ db:
+  image: postgres:18-alpine
+  environment:
+   POSTGRES_USER: waitlistfair
+   POSTGRES_DB: waitlistfair
+   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-waitlistfair-local-only}
+  ports: ["127.0.0.1:5432:5432"]
+  volumes: ["postgres_data:/var/lib/postgresql"]
+  healthcheck:
+   test: ["CMD-SHELL", "pg_isready -U waitlistfair -d waitlistfair"]
+   interval: 3s
+   timeout: 3s
+   retries: 20
+ mailpit:
+  image: axllent/mailpit:v1.29
+  ports: ["127.0.0.1:8025:8025", "127.0.0.1:1025:1025"]
+  healthcheck:
+   test: ["CMD", "/mailpit", "readyz"]
+   interval: 5s
+   timeout: 3s
+   retries: 15
+ api:
+  build: .
+  environment: &backend
+   DATABASE_URL: postgres://waitlistfair:${POSTGRES_PASSWORD:-waitlistfair-local-only}@db:5432/waitlistfair?sslmode=disable
+   APP_URL: ${APP_URL:-http://localhost:3000}
+   APP_ENV: ${APP_ENV:-development}
+   SEED_DEMO: ${SEED_DEMO:-true}
+   SMTP_ADDR: ${SMTP_ADDR:-mailpit:1025}
+   SMTP_USER: ${SMTP_USER:-}
+   SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+   MAIL_FROM: ${MAIL_FROM:-WaitlistFair <hello@waitlistfair.local>}
+  ports: ["127.0.0.1:8080:8080"]
+  depends_on:
+   db: {condition: service_healthy}
+  healthcheck:
+   test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/healthz"]
+   interval: 3s
+   timeout: 3s
+   retries: 30
+  restart: unless-stopped
+ worker:
+  build: .
+  command: ["/app/worker"]
+  environment: *backend
+  depends_on:
+   api: {condition: service_healthy}
+   mailpit: {condition: service_healthy}
+  healthcheck:
+   test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8081/healthz"]
+   interval: 5s
+   timeout: 3s
+   retries: 15
+  restart: unless-stopped
+ web:
+  build:
+   context: ./apps/web
+   args: {NEXT_PUBLIC_DEMO: "${NEXT_PUBLIC_DEMO:-true}"}
+  ports: ["127.0.0.1:3000:3000"]
+  depends_on:
+   api: {condition: service_healthy}
+  healthcheck:
+   test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/login"]
+   interval: 5s
+   timeout: 3s
+   retries: 30
+  restart: unless-stopped
+volumes:
+ postgres_data:
