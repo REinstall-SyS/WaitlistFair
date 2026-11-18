@@ -18,7 +18,7 @@ The Compose workflow builds and starts PostgreSQL, API, worker, Next.js, and Mai
 
 ## Local environment
 
-The authoring Windows host has Node 26.13.0 and GitHub CLI. It has no Docker, Go, or PostgreSQL installation on PATH. An official checksum-verified portable Go download was blocked by Windows Application Control; WSL is not installed. Backend/Compose verification therefore uses the recorded Linux GitHub Actions environment. Local frontend type checking and the three Vitest logic tests passed during implementation. The Windows build compiled and passed TypeScript but its standalone output encountered an OS directory permission failure; the Linux build is the deployment verification target.
+The authoring Windows host has Node 26.13.0 and GitHub CLI. It has no Docker, Go, or PostgreSQL installation on PATH. An official checksum-verified portable Go download was blocked by Windows Application Control; WSL is not installed. Backend/Compose verification therefore uses the recorded Linux GitHub Actions environment. Local frontend type checking and the three Vitest logic tests passed during implementation. The local Windows standalone production build passed after granting the required filesystem access. The Linux Compose build is the deployment verification target.
 
 ## Observed CI results
 

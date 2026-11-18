@@ -1,3 +1,20 @@
 package domain
-import"testing"
-func TestTransitions(t *testing.T){states:=map[string][]string{"slot":{"available","offer_pending","booked","closed"},"offer":{"pending","accepted","declined","expired","revoked"},"waitlist":{"active","paused","satisfied","withdrawn"}};valid:=map[string]bool{"slot/available/offer_pending":true,"slot/available/booked":true,"slot/available/closed":true,"slot/offer_pending/available":true,"slot/offer_pending/booked":true,"slot/offer_pending/closed":true,"slot/booked/available":true,"slot/booked/closed":true,"offer/pending/accepted":true,"offer/pending/declined":true,"offer/pending/expired":true,"offer/pending/revoked":true,"waitlist/active/paused":true,"waitlist/active/satisfied":true,"waitlist/active/withdrawn":true,"waitlist/paused/active":true,"waitlist/paused/withdrawn":true};for entity,all:=range states{for _,from:=range all{for _,to:=range all{key:=entity+"/"+from+"/"+to;t.Run(key,func(t *testing.T){if got:=CanTransition(entity,from,to);got!=valid[key]{t.Fatalf("got %v want %v",got,valid[key])}})}}}}
+
+import "testing"
+
+func TestTransitions(t *testing.T) {
+	states := map[string][]string{"slot": {"available", "offer_pending", "booked", "closed"}, "offer": {"pending", "accepted", "declined", "expired", "revoked"}, "waitlist": {"active", "paused", "satisfied", "withdrawn"}}
+	valid := map[string]bool{"slot/available/offer_pending": true, "slot/available/booked": true, "slot/available/closed": true, "slot/offer_pending/available": true, "slot/offer_pending/booked": true, "slot/offer_pending/closed": true, "slot/booked/available": true, "slot/booked/closed": true, "offer/pending/accepted": true, "offer/pending/declined": true, "offer/pending/expired": true, "offer/pending/revoked": true, "waitlist/active/paused": true, "waitlist/active/satisfied": true, "waitlist/active/withdrawn": true, "waitlist/paused/active": true, "waitlist/paused/withdrawn": true}
+	for entity, all := range states {
+		for _, from := range all {
+			for _, to := range all {
+				key := entity + "/" + from + "/" + to
+				t.Run(key, func(t *testing.T) {
+					if got := CanTransition(entity, from, to); got != valid[key] {
+						t.Fatalf("got %v want %v", got, valid[key])
+					}
+				})
+			}
+		}
+	}
+}

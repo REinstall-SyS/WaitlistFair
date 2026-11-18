@@ -107,7 +107,7 @@ test("real email sign-in, waitlist, cancellation, safe acceptance, audit, expiry
     .click();
   await expect(student.getByRole("status")).toContainText("on the waitlist");
   await expect(
-    student.getByRole("cell", { name: "Physics", exact: true }),
+    student.getByRole("row").filter({ hasText: "Physics" }),
   ).toBeVisible();
   await admin.goto("/app/calendar");
   const calculus = admin
@@ -247,13 +247,11 @@ test("real email sign-in, waitlist, cancellation, safe acceptance, audit, expiry
   if (process.env.FAULT_TESTS === "1")
     compose("exec", "-T", "api", "/app/manage", "expire-demo");
   else {
-    test
-      .info()
-      .annotations.push({
-        type: "note",
-        description:
-          "Set FAULT_TESTS=1 to exercise Docker restart and forced demo expiration.",
-      });
+    test.info().annotations.push({
+      type: "note",
+      description:
+        "Set FAULT_TESTS=1 to exercise Docker restart and forced demo expiration.",
+    });
   }
   if (process.env.FAULT_TESTS === "1") {
     await message(

@@ -7,12 +7,18 @@ import { Modal } from "./ui/dialog";
 import { type Offer, formatDate, formatTime, timeLeft } from "@/lib/api";
 export function Offers() {
   const { me, org, data, run, busy } = useApp();
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => Date.parse(data.server_time));
   const [declining, setDeclining] = useState<Offer | null>(null);
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
+    const serverStart = Date.parse(data.server_time);
+    const started = performance.now();
+    setNow(serverStart);
+    const timer = setInterval(
+      () => setNow(serverStart + performance.now() - started),
+      1000,
+    );
     return () => clearInterval(timer);
-  }, []);
+  }, [data.server_time]);
   const pending = data.offers.filter((o) => o.state === "pending");
   return (
     <>

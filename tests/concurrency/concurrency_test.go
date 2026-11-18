@@ -1,9 +1,151 @@
 package concurrency_test
-import("context";"fmt";"sync";"sync/atomic";"testing";"time";"github.com/REinstall-SyS/WaitlistFair/internal/testutil")
-func race(n int,fn func(int)){var wg sync.WaitGroup;gate:=make(chan struct{});for i:=0;i<n;i++{wg.Add(1);go func(i int){defer wg.Done();<-gate;fn(i)}(i)};close(gate);wg.Wait()}
-func Test100ConcurrentHTTPClaims(t *testing.T){f:=testutil.New(t,100);slot:=f.Slot(t,f.Start);var winners,conflicts,unexpected atomic.Int32;start:=time.Now();race(100,func(i int){code,_,e:=f.Request(f.Students[i],"POST",fmt.Sprintf("/api/orgs/%s/slots/%s/book",f.Org,slot),nil,fmt.Sprintf("claim-%03d",i));if e!=nil{unexpected.Add(1);return};switch code{case 201:winners.Add(1);case 409:conflicts.Add(1);default:unexpected.Add(1)}});n:=f.Count(t,`SELECT count(*) FROM bookings WHERE slot_id=$1 AND state='confirmed'`,slot);if winners.Load()!=1||n!=1||unexpected.Load()!=0{t.Fatalf("winners=%d conflicts=%d unexpected=%d confirmed=%d",winners.Load(),conflicts.Load(),unexpected.Load(),n)};t.Logf("100 simultaneous HTTP requests; winners=%d conflicts=%d confirmed=%d wall=%s",winners.Load(),conflicts.Load(),n,time.Since(start))}
-func TestDuplicateOfferAcceptance(t *testing.T){f:=testutil.New(t,2);slot:=f.Slot(t,f.Start);f.Entry(t,f.Students[0],2,true);testutil.Must(t,f.Service.Allocate(context.Background(),f.Org,slot));offer,user:=f.Offer(t,slot);var failures atomic.Int32;race(100,func(i int){code,_,e:=f.Request(user,"POST",fmt.Sprintf("/api/orgs/%s/offers/%s/accept",f.Org,offer),nil,"same-acceptance-key");if e!=nil||code!=200{failures.Add(1)}});if failures.Load()!=0||f.Count(t,`SELECT count(*) FROM bookings WHERE slot_id=$1 AND state='confirmed'`,slot)!=1{t.Fatalf("failed duplicate acceptance: %d errors",failures.Load())}}
-func TestAcceptRacesExpiration(t *testing.T){for i:=0;i<12;i++{t.Run(fmt.Sprint(i),func(t *testing.T){f:=testutil.New(t,2);slot:=f.Slot(t,f.Start);f.Entry(t,f.Students[0],2,true);f.Entry(t,f.Students[1],1,true);testutil.Must(t,f.Service.Allocate(context.Background(),f.Org,slot));offer,user:=f.Offer(t,slot);_,e:=f.DB.Exec(context.Background(),`UPDATE offers SET expires_at=clock_timestamp()+interval '5 milliseconds' WHERE id=$1`,offer);testutil.Must(t,e);race(2,func(j int){if j==0{_,_=f.Service.Accept(context.Background(),f.Actor(user),offer,"expiration-race-key")}else{time.Sleep(5*time.Millisecond);_ = f.Service.Expire(context.Background(),f.Org,offer)}});var state string;testutil.Must(t,f.DB.QueryRow(context.Background(),`SELECT state FROM offers WHERE id=$1`,offer).Scan(&state));n:=f.Count(t,`SELECT count(*) FROM bookings WHERE slot_id=$1 AND state='confirmed'`,slot);if n>1||(state=="expired"&&n!=0){t.Fatalf("state=%s confirmed=%d",state,n)}})}}
-func TestTwoWorkersAndDuplicateCancellation(t *testing.T){f:=testutil.New(t,3);slot:=f.Slot(t,f.Start);f.Entry(t,f.Students[0],3,true);_,e:=f.Service.Book(context.Background(),f.Actor(f.Students[2]),slot,"initial-booking-key");testutil.Must(t,e);race(2,func(i int){_ = f.Service.Cancel(context.Background(),f.Actor(f.Admin),slot,false)});race(2,func(i int){_ = f.Service.Allocate(context.Background(),f.Org,slot)});if f.Count(t,`SELECT count(*) FROM offers WHERE slot_id=$1`,slot)!=1{t.Fatal("duplicate workers created multiple offers")}}
-func TestOverlappingSlotsSelectDifferentStudents(t *testing.T){f:=testutil.New(t,3);first:=f.Slot(t,f.Start);second:=f.OtherTutorSlot(t,f.Start);f.Entry(t,f.Students[0],3,true);f.Entry(t,f.Students[1],2,true);f.Entry(t,f.Students[2],1,true);errors:=make(chan error,2);race(2,func(i int){slot:=first;if i==1{slot=second};errors<-f.Service.Allocate(context.Background(),f.Org,slot)});close(errors);for e:=range errors{testutil.Must(t,e)};if f.Count(t,`SELECT count(DISTINCT recipient_id) FROM offers WHERE slot_id IN ($1,$2) AND state='pending'`,first,second)!=2{t.Fatal("overlapping offers did not choose different students")};if f.Count(t,`SELECT count(*) FROM claims a JOIN claims b ON a.id<b.id AND a.student_id=b.student_id WHERE a.state IN ('pending','confirmed') AND b.state IN ('pending','confirmed') AND tstzrange(a.starts_at,a.ends_at,'[)') && tstzrange(b.starts_at,b.ends_at,'[)')`)!=0{t.Fatal("overlap invariant violated")}}
-func TestIndependentSlotsAllocateConcurrently(t *testing.T){f:=testutil.New(t,10);slots:=make([]string,10);for i:=range slots{slots[i]=f.Slot(t,f.Start.Add(time.Duration(i)*time.Hour));f.Entry(t,f.Students[i],10-i,true)};var failures atomic.Int32;race(10,func(i int){if f.Service.Allocate(context.Background(),f.Org,slots[i])!=nil{failures.Add(1)}});if failures.Load()!=0{t.Fatalf("%d allocation failures",failures.Load())};if f.Count(t,`SELECT count(*) FROM offers WHERE organization_id=$1 AND state='pending'`,f.Org)!=10{t.Fatal("expected 10 distinct pending offers")}}
+
+import (
+	"context"
+	"fmt"
+	"github.com/REinstall-SyS/WaitlistFair/internal/testutil"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+)
+
+func race(n int, fn func(int)) {
+	var wg sync.WaitGroup
+	gate := make(chan struct{})
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) { defer wg.Done(); <-gate; fn(i) }(i)
+	}
+	close(gate)
+	wg.Wait()
+}
+func Test100ConcurrentHTTPClaims(t *testing.T) {
+	f := testutil.New(t, 100)
+	slot := f.Slot(t, f.Start)
+	var winners, conflicts, unexpected atomic.Int32
+	start := time.Now()
+	race(100, func(i int) {
+		code, _, e := f.Request(f.Students[i], "POST", fmt.Sprintf("/api/orgs/%s/slots/%s/book", f.Org, slot), nil, fmt.Sprintf("claim-%03d", i))
+		if e != nil {
+			unexpected.Add(1)
+			return
+		}
+		switch code {
+		case 201:
+			winners.Add(1)
+		case 409:
+			conflicts.Add(1)
+		default:
+			unexpected.Add(1)
+		}
+	})
+	n := f.Count(t, `SELECT count(*) FROM bookings WHERE slot_id=$1 AND state='confirmed'`, slot)
+	if winners.Load() != 1 || n != 1 || unexpected.Load() != 0 {
+		t.Fatalf("winners=%d conflicts=%d unexpected=%d confirmed=%d", winners.Load(), conflicts.Load(), unexpected.Load(), n)
+	}
+	t.Logf("100 simultaneous HTTP requests; winners=%d conflicts=%d confirmed=%d wall=%s", winners.Load(), conflicts.Load(), n, time.Since(start))
+}
+func TestDuplicateOfferAcceptance(t *testing.T) {
+	f := testutil.New(t, 2)
+	slot := f.Slot(t, f.Start)
+	f.Entry(t, f.Students[0], 2, true)
+	testutil.Must(t, f.Service.Allocate(context.Background(), f.Org, slot))
+	offer, user := f.Offer(t, slot)
+	var failures atomic.Int32
+	race(100, func(i int) {
+		code, _, e := f.Request(user, "POST", fmt.Sprintf("/api/orgs/%s/offers/%s/accept", f.Org, offer), nil, "same-acceptance-key")
+		if e != nil || code != 200 {
+			failures.Add(1)
+		}
+	})
+	if failures.Load() != 0 || f.Count(t, `SELECT count(*) FROM bookings WHERE slot_id=$1 AND state='confirmed'`, slot) != 1 {
+		t.Fatalf("failed duplicate acceptance: %d errors", failures.Load())
+	}
+}
+func TestAcceptRacesExpiration(t *testing.T) {
+	for i := 0; i < 12; i++ {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			f := testutil.New(t, 2)
+			slot := f.Slot(t, f.Start)
+			f.Entry(t, f.Students[0], 2, true)
+			f.Entry(t, f.Students[1], 1, true)
+			testutil.Must(t, f.Service.Allocate(context.Background(), f.Org, slot))
+			offer, user := f.Offer(t, slot)
+			_, e := f.DB.Exec(context.Background(), `UPDATE offers SET expires_at=clock_timestamp()+interval '5 milliseconds' WHERE id=$1`, offer)
+			testutil.Must(t, e)
+			race(2, func(j int) {
+				if j == 0 {
+					_, _ = f.Service.Accept(context.Background(), f.Actor(user), offer, "expiration-race-key")
+				} else {
+					time.Sleep(5 * time.Millisecond)
+					_ = f.Service.Expire(context.Background(), f.Org, offer)
+				}
+			})
+			var state string
+			testutil.Must(t, f.DB.QueryRow(context.Background(), `SELECT state FROM offers WHERE id=$1`, offer).Scan(&state))
+			n := f.Count(t, `SELECT count(*) FROM bookings WHERE slot_id=$1 AND state='confirmed'`, slot)
+			if n > 1 || (state == "expired" && n != 0) {
+				t.Fatalf("state=%s confirmed=%d", state, n)
+			}
+		})
+	}
+}
+func TestTwoWorkersAndDuplicateCancellation(t *testing.T) {
+	f := testutil.New(t, 3)
+	slot := f.Slot(t, f.Start)
+	f.Entry(t, f.Students[0], 3, true)
+	_, e := f.Service.Book(context.Background(), f.Actor(f.Students[2]), slot, "initial-booking-key")
+	testutil.Must(t, e)
+	race(2, func(i int) { _ = f.Service.Cancel(context.Background(), f.Actor(f.Admin), slot, false) })
+	race(2, func(i int) { _ = f.Service.Allocate(context.Background(), f.Org, slot) })
+	if f.Count(t, `SELECT count(*) FROM offers WHERE slot_id=$1`, slot) != 1 {
+		t.Fatal("duplicate workers created multiple offers")
+	}
+}
+func TestOverlappingSlotsSelectDifferentStudents(t *testing.T) {
+	f := testutil.New(t, 3)
+	first := f.Slot(t, f.Start)
+	second := f.OtherTutorSlot(t, f.Start)
+	f.Entry(t, f.Students[0], 3, true)
+	f.Entry(t, f.Students[1], 2, true)
+	f.Entry(t, f.Students[2], 1, true)
+	errors := make(chan error, 2)
+	race(2, func(i int) {
+		slot := first
+		if i == 1 {
+			slot = second
+		}
+		errors <- f.Service.Allocate(context.Background(), f.Org, slot)
+	})
+	close(errors)
+	for e := range errors {
+		testutil.Must(t, e)
+	}
+	if f.Count(t, `SELECT count(DISTINCT recipient_id) FROM offers WHERE slot_id IN ($1,$2) AND state='pending'`, first, second) != 2 {
+		t.Fatal("overlapping offers did not choose different students")
+	}
+	if f.Count(t, `SELECT count(*) FROM claims a JOIN claims b ON a.id<b.id AND a.student_id=b.student_id WHERE a.state IN ('pending','confirmed') AND b.state IN ('pending','confirmed') AND tstzrange(a.starts_at,a.ends_at,'[)') && tstzrange(b.starts_at,b.ends_at,'[)')`) != 0 {
+		t.Fatal("overlap invariant violated")
+	}
+}
+func TestIndependentSlotsAllocateConcurrently(t *testing.T) {
+	f := testutil.New(t, 10)
+	slots := make([]string, 10)
+	for i := range slots {
+		slots[i] = f.Slot(t, f.Start.Add(time.Duration(i)*time.Hour))
+		f.Entry(t, f.Students[i], 10-i, true)
+	}
+	var failures atomic.Int32
+	race(10, func(i int) {
+		if f.Service.Allocate(context.Background(), f.Org, slots[i]) != nil {
+			failures.Add(1)
+		}
+	})
+	if failures.Load() != 0 {
+		t.Fatalf("%d allocation failures", failures.Load())
+	}
+	if f.Count(t, `SELECT count(*) FROM offers WHERE organization_id=$1 AND state='pending'`, f.Org) != 10 {
+		t.Fatal("expected 10 distinct pending offers")
+	}
+}

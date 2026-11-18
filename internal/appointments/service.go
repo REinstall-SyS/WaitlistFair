@@ -1,57 +1,397 @@
 package appointments
 
 import (
- "context"
- "encoding/json"
- "errors"
- "fmt"
- "time"
- "github.com/jackc/pgx/v5"
- "github.com/jackc/pgx/v5/pgconn"
- "github.com/jackc/pgx/v5/pgxpool"
- "github.com/REinstall-SyS/WaitlistFair/internal/allocation"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"github.com/REinstall-SyS/WaitlistFair/internal/allocation"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"time"
 )
-var ErrForbidden=errors.New("not permitted")
-var ErrConflict=errors.New("this appointment or offer is no longer available")
-var ErrNotFound=errors.New("record not found")
-type Actor struct{UserID,OrgID,Role string}
-type Service struct{DB *pgxpool.Pool;AppURL string}
-type Slot struct{ID,OrgID,TutorID,ServiceID,State,TutorUser string;Start,End time.Time}
-func Authorize(ctx context.Context,tx pgx.Tx,a Actor)error{var role string;err:=tx.QueryRow(ctx,`SELECT role FROM memberships m JOIN users u ON u.id=m.user_id WHERE organization_id=$1 AND user_id=$2 AND enabled AND u.deleted_at IS NULL`,a.OrgID,a.UserID).Scan(&role);if err!=nil||role!=a.Role{return ErrForbidden};return nil}
-func lockSlot(ctx context.Context,tx pgx.Tx,org,id string)(Slot,error){var s Slot;err:=tx.QueryRow(ctx,`SELECT s.id,s.organization_id,s.tutor_id,s.service_id,s.state,s.starts_at,s.ends_at,t.user_id FROM slots s JOIN tutors t ON t.id=s.tutor_id WHERE s.id=$1 AND s.organization_id=$2 FOR UPDATE OF s`,id,org).Scan(&s.ID,&s.OrgID,&s.TutorID,&s.ServiceID,&s.State,&s.Start,&s.End,&s.TutorUser);if errors.Is(err,pgx.ErrNoRows){return s,ErrNotFound};return s,err}
-func DBNow(ctx context.Context,tx pgx.Tx)(time.Time,error){var now time.Time;err:=tx.QueryRow(ctx,`SELECT clock_timestamp()`).Scan(&now);return now,err}
-func Audit(ctx context.Context,tx pgx.Tx,org,actor,action,target string,metadata any)error{b,e:=json.Marshal(metadata);if e!=nil{return e};_,e=tx.Exec(ctx,`INSERT INTO audit_events(organization_id,actor_id,action,target_id,metadata) VALUES($1,NULLIF($2,'')::uuid,$3,NULLIF($4,'')::uuid,$5)`,org,actor,action,target,b);return e}
-func Event(ctx context.Context,tx pgx.Tx,kind string,payload any)error{b,e:=json.Marshal(payload);if e!=nil{return e};_,e=tx.Exec(ctx,`INSERT INTO outbox(event_type,payload) VALUES($1,$2)`,kind,b);return e}
-func normalize(err error)error{var p *pgconn.PgError;if errors.As(err,&p)&&(p.Code=="23505"||p.Code=="23P01"){return ErrConflict};return err}
-func(s *Service)transaction(ctx context.Context,fn func(pgx.Tx)error)error{tx,e:=s.DB.BeginTx(ctx,pgx.TxOptions{IsoLevel:pgx.ReadCommitted});if e!=nil{return e};defer tx.Rollback(ctx);if e=fn(tx);e!=nil{return normalize(e)};return normalize(tx.Commit(ctx))}
-func replay(ctx context.Context,tx pgx.Tx,a Actor,key,operation string)(string,error){if len(key)<8||len(key)>100{return "",fmt.Errorf("idempotency key must contain 8 to 100 characters")};var id,op string;e:=tx.QueryRow(ctx,`SELECT result_id,operation FROM idempotency_keys WHERE user_id=$1 AND key=$2`,a.UserID,key).Scan(&id,&op);if errors.Is(e,pgx.ErrNoRows){return "",nil};if e!=nil{return "",e};if op!=operation{return "",ErrConflict};return id,nil}
-func remember(ctx context.Context,tx pgx.Tx,a Actor,key,op,id string)error{_,e:=tx.Exec(ctx,`INSERT INTO idempotency_keys(user_id,key,operation,result_id) VALUES($1,$2,$3,$4)`,a.UserID,key,op,id);return e}
-func(s *Service)Book(ctx context.Context,a Actor,slotID,key string)(string,error){var result string;err:=s.transaction(ctx,func(tx pgx.Tx)error{if e:=Authorize(ctx,tx,a);e!=nil{return e};if a.Role!="student"{return ErrForbidden};slot,e:=lockSlot(ctx,tx,a.OrgID,slotID);if e!=nil{return e};if _,e=tx.Exec(ctx,`SELECT id FROM users WHERE id=$1 FOR UPDATE`,a.UserID);e!=nil{return e};if e=Authorize(ctx,tx,a);e!=nil{return e};op:="book:"+slotID;result,e=replay(ctx,tx,a,key,op);if e!=nil||result!=""{return e};var future bool;if e=tx.QueryRow(ctx,`SELECT $1::timestamptz>clock_timestamp() AND NOT allocation_requested FROM slots WHERE id=$2`,slot.Start,slotID).Scan(&future);e!=nil{return e};if slot.State!="available"||!future{return ErrConflict};result,e=s.confirm(ctx,tx,slot,a.UserID,"");if e!=nil{return e};if e=remember(ctx,tx,a,key,op,result);e!=nil{return e};return Audit(ctx,tx,a.OrgID,a.UserID,"BookingConfirmed",result,map[string]string{"slot_id":slotID})});return result,err}
-func(s *Service)confirm(ctx context.Context,tx pgx.Tx,slot Slot,user,claim string)(string,error){var id string;var e error;if claim==""{e=tx.QueryRow(ctx,`INSERT INTO claims(slot_id,organization_id,student_id,starts_at,ends_at,state) VALUES($1,$2,$3,$4,$5,'confirmed') RETURNING id`,slot.ID,slot.OrgID,user,slot.Start,slot.End).Scan(&claim)}else{_,e=tx.Exec(ctx,`UPDATE claims SET state='confirmed' WHERE id=$1 AND state='pending'`,claim)};if e!=nil{return "",e};e=tx.QueryRow(ctx,`INSERT INTO bookings(slot_id,organization_id,student_id,claim_id) VALUES($1,$2,$3,$4) RETURNING id`,slot.ID,slot.OrgID,user,claim).Scan(&id);if e!=nil{return "",e};if _,e=tx.Exec(ctx,`UPDATE slots SET state='booked' WHERE id=$1`,slot.ID);e!=nil{return "",e};return id,s.notify(ctx,tx,"BookingConfirmed",user,"Your tutoring appointment is confirmed",fmt.Sprintf("Your appointment starts %s (UTC). View details: %s/app/appointments",slot.Start.UTC().Format(time.RFC1123),s.AppURL))}
-func(s *Service)notify(ctx context.Context,tx pgx.Tx,kind,user,subject,body string)error{var email string;var enabled bool;if e:=tx.QueryRow(ctx,`SELECT email,notifications FROM users WHERE id=$1`,user).Scan(&email,&enabled);e!=nil{return e};if !enabled{return Event(ctx,tx,kind,map[string]string{"skipped":"notifications_disabled"})};return Event(ctx,tx,kind,map[string]string{"to":email,"subject":subject,"body":body})}
-func(s *Service)Cancel(ctx context.Context,a Actor,slotID string,closeSlot bool)error{return s.transaction(ctx,func(tx pgx.Tx)error{if e:=Authorize(ctx,tx,a);e!=nil{return e};slot,e:=lockSlot(ctx,tx,a.OrgID,slotID);if e!=nil{return e};if a.Role=="tutor"&&slot.TutorUser!=a.UserID{return ErrForbidden};if closeSlot&&a.Role=="student"{return ErrForbidden};if slot.State=="closed"{return nil};if !closeSlot&&slot.State=="available"{if a.Role=="student"{return ErrConflict};return nil};if !closeSlot&&slot.State=="offer_pending"{return ErrConflict};var user string;if slot.State=="booked"{if e=tx.QueryRow(ctx,`SELECT student_id FROM bookings WHERE slot_id=$1 AND state='confirmed'`,slotID).Scan(&user);e!=nil{return e};if a.Role=="student"&&user!=a.UserID{return ErrForbidden};if _,e=tx.Exec(ctx,`UPDATE bookings SET state='canceled',canceled_at=clock_timestamp() WHERE slot_id=$1 AND state='confirmed'`,slotID);e!=nil{return e};if e=s.notify(ctx,tx,"BookingCanceled",user,"Tutoring appointment canceled","Your appointment was canceled. View your appointments: "+s.AppURL+"/app/appointments");e!=nil{return e}}else if a.Role=="student"{return ErrForbidden};if _,e=tx.Exec(ctx,`UPDATE claims SET state='released' WHERE slot_id=$1 AND state IN ('pending','confirmed')`,slotID);e!=nil{return e};if _,e=tx.Exec(ctx,`UPDATE offers SET state='revoked',resolved_at=clock_timestamp() WHERE slot_id=$1 AND state='pending'`,slotID);e!=nil{return e};state:="available";if closeSlot{state="closed"};if _,e=tx.Exec(ctx,`UPDATE slots SET state=$2,canceled_at=COALESCE(canceled_at,clock_timestamp()) WHERE id=$1`,slotID,state);e!=nil{return e};if e=Audit(ctx,tx,a.OrgID,a.UserID,"BookingCanceled",slotID,map[string]any{"closed":closeSlot});e!=nil{return e};if !closeSlot{slot.State="available";return s.allocate(ctx,tx,slot)};return nil})}
-func(s *Service)Allocate(ctx context.Context,org,slotID string)error{return s.transaction(ctx,func(tx pgx.Tx)error{slot,e:=lockSlot(ctx,tx,org,slotID);if e!=nil{return e};if slot.State!="available"{return nil};return s.allocate(ctx,tx,slot)})}
-func candidateReasons(ctx context.Context,tx pgx.Tx,slot Slot,id string)([]string,error){var status string;var enabled,attempted,conflict,pending bool;err:=tx.QueryRow(ctx,`SELECT w.status,m.enabled AND m.role='student' AND u.deleted_at IS NULL,
+
+var ErrForbidden = errors.New("not permitted")
+var ErrConflict = errors.New("this appointment or offer is no longer available")
+var ErrNotFound = errors.New("record not found")
+
+type Actor struct{ UserID, OrgID, Role string }
+type Service struct {
+	DB     *pgxpool.Pool
+	AppURL string
+}
+type Slot struct {
+	ID, OrgID, TutorID, ServiceID, State, TutorUser string
+	Start, End                                      time.Time
+}
+
+func Authorize(ctx context.Context, tx pgx.Tx, a Actor) error {
+	var role string
+	err := tx.QueryRow(ctx, `SELECT role FROM memberships m JOIN users u ON u.id=m.user_id WHERE organization_id=$1 AND user_id=$2 AND enabled AND u.deleted_at IS NULL`, a.OrgID, a.UserID).Scan(&role)
+	if err != nil || role != a.Role {
+		return ErrForbidden
+	}
+	return nil
+}
+func lockSlot(ctx context.Context, tx pgx.Tx, org, id string) (Slot, error) {
+	var s Slot
+	err := tx.QueryRow(ctx, `SELECT s.id,s.organization_id,s.tutor_id,s.service_id,s.state,s.starts_at,s.ends_at,t.user_id FROM slots s JOIN tutors t ON t.id=s.tutor_id WHERE s.id=$1 AND s.organization_id=$2 FOR UPDATE OF s`, id, org).Scan(&s.ID, &s.OrgID, &s.TutorID, &s.ServiceID, &s.State, &s.Start, &s.End, &s.TutorUser)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return s, ErrNotFound
+	}
+	return s, err
+}
+func DBNow(ctx context.Context, tx pgx.Tx) (time.Time, error) {
+	var now time.Time
+	err := tx.QueryRow(ctx, `SELECT clock_timestamp()`).Scan(&now)
+	return now, err
+}
+func Audit(ctx context.Context, tx pgx.Tx, org, actor, action, target string, metadata any) error {
+	b, e := json.Marshal(metadata)
+	if e != nil {
+		return e
+	}
+	_, e = tx.Exec(ctx, `INSERT INTO audit_events(organization_id,actor_id,action,target_id,metadata) VALUES($1,NULLIF($2,'')::uuid,$3,NULLIF($4,'')::uuid,$5)`, org, actor, action, target, b)
+	return e
+}
+func Event(ctx context.Context, tx pgx.Tx, kind string, payload any) error {
+	b, e := json.Marshal(payload)
+	if e != nil {
+		return e
+	}
+	_, e = tx.Exec(ctx, `INSERT INTO outbox(event_type,payload) VALUES($1,$2)`, kind, b)
+	return e
+}
+func normalize(err error) error {
+	var p *pgconn.PgError
+	if errors.As(err, &p) && (p.Code == "23505" || p.Code == "23P01") {
+		return ErrConflict
+	}
+	return err
+}
+func (s *Service) transaction(ctx context.Context, fn func(pgx.Tx) error) error {
+	tx, e := s.DB.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	if e != nil {
+		return e
+	}
+	defer tx.Rollback(ctx)
+	if e = fn(tx); e != nil {
+		return normalize(e)
+	}
+	return normalize(tx.Commit(ctx))
+}
+func replay(ctx context.Context, tx pgx.Tx, a Actor, key, operation string) (string, error) {
+	if len(key) < 8 || len(key) > 100 {
+		return "", fmt.Errorf("idempotency key must contain 8 to 100 characters")
+	}
+	var id, op string
+	e := tx.QueryRow(ctx, `SELECT result_id,operation FROM idempotency_keys WHERE user_id=$1 AND key=$2`, a.UserID, key).Scan(&id, &op)
+	if errors.Is(e, pgx.ErrNoRows) {
+		return "", nil
+	}
+	if e != nil {
+		return "", e
+	}
+	if op != operation {
+		return "", ErrConflict
+	}
+	return id, nil
+}
+func remember(ctx context.Context, tx pgx.Tx, a Actor, key, op, id string) error {
+	_, e := tx.Exec(ctx, `INSERT INTO idempotency_keys(user_id,key,operation,result_id) VALUES($1,$2,$3,$4)`, a.UserID, key, op, id)
+	return e
+}
+func (s *Service) Book(ctx context.Context, a Actor, slotID, key string) (string, error) {
+	var result string
+	err := s.transaction(ctx, func(tx pgx.Tx) error {
+		if e := Authorize(ctx, tx, a); e != nil {
+			return e
+		}
+		if a.Role != "student" {
+			return ErrForbidden
+		}
+		slot, e := lockSlot(ctx, tx, a.OrgID, slotID)
+		if e != nil {
+			return e
+		}
+		if _, e = tx.Exec(ctx, `SELECT id FROM users WHERE id=$1 FOR UPDATE`, a.UserID); e != nil {
+			return e
+		}
+		if e = Authorize(ctx, tx, a); e != nil {
+			return e
+		}
+		op := "book:" + slotID
+		result, e = replay(ctx, tx, a, key, op)
+		if e != nil || result != "" {
+			return e
+		}
+		var future bool
+		if e = tx.QueryRow(ctx, `SELECT $1::timestamptz>clock_timestamp() AND NOT allocation_requested FROM slots WHERE id=$2`, slot.Start, slotID).Scan(&future); e != nil {
+			return e
+		}
+		if slot.State != "available" || !future {
+			return ErrConflict
+		}
+		result, e = s.confirm(ctx, tx, slot, a.UserID, "")
+		if e != nil {
+			return e
+		}
+		if e = remember(ctx, tx, a, key, op, result); e != nil {
+			return e
+		}
+		return Audit(ctx, tx, a.OrgID, a.UserID, "BookingConfirmed", result, map[string]string{"slot_id": slotID})
+	})
+	return result, err
+}
+func (s *Service) confirm(ctx context.Context, tx pgx.Tx, slot Slot, user, claim string) (string, error) {
+	var id string
+	var e error
+	if claim == "" {
+		e = tx.QueryRow(ctx, `INSERT INTO claims(slot_id,organization_id,student_id,starts_at,ends_at,state) VALUES($1,$2,$3,$4,$5,'confirmed') RETURNING id`, slot.ID, slot.OrgID, user, slot.Start, slot.End).Scan(&claim)
+	} else {
+		_, e = tx.Exec(ctx, `UPDATE claims SET state='confirmed' WHERE id=$1 AND state='pending'`, claim)
+	}
+	if e != nil {
+		return "", e
+	}
+	e = tx.QueryRow(ctx, `INSERT INTO bookings(slot_id,organization_id,student_id,claim_id) VALUES($1,$2,$3,$4) RETURNING id`, slot.ID, slot.OrgID, user, claim).Scan(&id)
+	if e != nil {
+		return "", e
+	}
+	if _, e = tx.Exec(ctx, `UPDATE slots SET state='booked' WHERE id=$1`, slot.ID); e != nil {
+		return "", e
+	}
+	return id, s.notify(ctx, tx, "BookingConfirmed", user, "Your tutoring appointment is confirmed", fmt.Sprintf("Your appointment starts %s (UTC). View details: %s/app/appointments", slot.Start.UTC().Format(time.RFC1123), s.AppURL))
+}
+func (s *Service) notify(ctx context.Context, tx pgx.Tx, kind, user, subject, body string) error {
+	var email string
+	var enabled bool
+	if e := tx.QueryRow(ctx, `SELECT email,notifications FROM users WHERE id=$1`, user).Scan(&email, &enabled); e != nil {
+		return e
+	}
+	if !enabled {
+		return Event(ctx, tx, kind, map[string]string{"skipped": "notifications_disabled"})
+	}
+	return Event(ctx, tx, kind, map[string]string{"to": email, "subject": subject, "body": body})
+}
+func (s *Service) Cancel(ctx context.Context, a Actor, slotID string, closeSlot bool) error {
+	return s.transaction(ctx, func(tx pgx.Tx) error {
+		if e := Authorize(ctx, tx, a); e != nil {
+			return e
+		}
+		slot, e := lockSlot(ctx, tx, a.OrgID, slotID)
+		if e != nil {
+			return e
+		}
+		if a.Role == "tutor" && slot.TutorUser != a.UserID {
+			return ErrForbidden
+		}
+		if closeSlot && a.Role == "student" {
+			return ErrForbidden
+		}
+		if slot.State == "closed" {
+			return nil
+		}
+		if !closeSlot && slot.State == "available" {
+			if a.Role == "student" {
+				return ErrConflict
+			}
+			return nil
+		}
+		if !closeSlot && slot.State == "offer_pending" {
+			return ErrConflict
+		}
+		var user string
+		if slot.State == "booked" {
+			if e = tx.QueryRow(ctx, `SELECT student_id FROM bookings WHERE slot_id=$1 AND state='confirmed'`, slotID).Scan(&user); e != nil {
+				return e
+			}
+			if a.Role == "student" && user != a.UserID {
+				return ErrForbidden
+			}
+			if _, e = tx.Exec(ctx, `UPDATE bookings SET state='canceled',canceled_at=clock_timestamp() WHERE slot_id=$1 AND state='confirmed'`, slotID); e != nil {
+				return e
+			}
+			if e = s.notify(ctx, tx, "BookingCanceled", user, "Tutoring appointment canceled", "Your appointment was canceled. View your appointments: "+s.AppURL+"/app/appointments"); e != nil {
+				return e
+			}
+		} else if a.Role == "student" {
+			return ErrForbidden
+		}
+		if _, e = tx.Exec(ctx, `UPDATE claims SET state='released' WHERE slot_id=$1 AND state IN ('pending','confirmed')`, slotID); e != nil {
+			return e
+		}
+		if _, e = tx.Exec(ctx, `UPDATE offers SET state='revoked',resolved_at=clock_timestamp() WHERE slot_id=$1 AND state='pending'`, slotID); e != nil {
+			return e
+		}
+		state := "available"
+		if closeSlot {
+			state = "closed"
+		}
+		if _, e = tx.Exec(ctx, `UPDATE slots SET state=$2,canceled_at=COALESCE(canceled_at,clock_timestamp()) WHERE id=$1`, slotID, state); e != nil {
+			return e
+		}
+		if e = Audit(ctx, tx, a.OrgID, a.UserID, "BookingCanceled", slotID, map[string]any{"closed": closeSlot}); e != nil {
+			return e
+		}
+		if !closeSlot {
+			slot.State = "available"
+			return s.allocate(ctx, tx, slot)
+		}
+		return nil
+	})
+}
+func (s *Service) Allocate(ctx context.Context, org, slotID string) error {
+	return s.transaction(ctx, func(tx pgx.Tx) error {
+		slot, e := lockSlot(ctx, tx, org, slotID)
+		if e != nil {
+			return e
+		}
+		if slot.State != "available" {
+			return nil
+		}
+		return s.allocate(ctx, tx, slot)
+	})
+}
+func candidateReasons(ctx context.Context, tx pgx.Tx, slot Slot, id string) ([]string, error) {
+	var status string
+	var enabled, attempted, conflict, pending bool
+	err := tx.QueryRow(ctx, `SELECT w.status,m.enabled AND m.role='student' AND u.deleted_at IS NULL,
  EXISTS(SELECT 1 FROM offers o WHERE o.slot_id=$2 AND o.recipient_id=w.student_id),
  EXISTS(SELECT 1 FROM claims c WHERE c.student_id=w.student_id AND c.state IN ('pending','confirmed') AND tstzrange(c.starts_at,c.ends_at,'[)') && tstzrange($3::timestamptz,$4::timestamptz,'[)')),
  EXISTS(SELECT 1 FROM claims c WHERE c.entry_id=w.id AND c.state='pending')
- FROM waitlist_entries w JOIN memberships m ON m.organization_id=w.organization_id AND m.user_id=w.student_id JOIN users u ON u.id=w.student_id WHERE w.id=$1`,id,slot.ID,slot.Start,slot.End).Scan(&status,&enabled,&attempted,&conflict,&pending);if err!=nil{return nil,err};r:=[]string{};if status!="active"{r=append(r,"inactive")};if !enabled{r=append(r,"participation_disabled")};if attempted{r=append(r,"previous_offer")};if conflict{r=append(r,"conflicting_reservation")};if pending{r=append(r,"existing_offer")};return r,nil}
-func(s *Service)allocate(ctx context.Context,tx pgx.Tx,slot Slot)error{
- if _,e:=tx.Exec(ctx,`UPDATE slots SET allocation_requested=false WHERE id=$1`,slot.ID);e!=nil{return e}
- now,e:=DBNow(ctx,tx);if e!=nil{return e};if !slot.Start.After(now){return nil}
- rows,e:=tx.Query(ctx,`SELECT id,student_id,joined_at,preferences FROM waitlist_entries WHERE organization_id=$1 AND service_id=$2 ORDER BY joined_at,id`,slot.OrgID,slot.ServiceID);if e!=nil{return e};candidates:=[]allocation.Candidate{};for rows.Next(){var c allocation.Candidate;var raw []byte;if e=rows.Scan(&c.ID,&c.StudentID,&c.JoinedAt,&raw);e!=nil{rows.Close();return e};if e=json.Unmarshal(raw,&c.Preferences);e!=nil{rows.Close();return e};candidates=append(candidates,c)};e=rows.Err();rows.Close();if e!=nil{return e}
- for i:=range candidates{candidates[i].Reasons,e=candidateReasons(ctx,tx,slot,candidates[i].ID);if e!=nil{return e}}
- selected:=-1
- // Never SKIP LOCKED here: wait for an earlier candidate, then revalidate. Rejected
- // candidate locks are released at a savepoint, avoiding cross-slot user lock cycles.
- for i:=range candidates{c:=&candidates[i];if !c.Preferences.Match(slot.Start,slot.End){continue};if _,e=tx.Exec(ctx,`SAVEPOINT candidate`);e!=nil{return e};if _,e=tx.Exec(ctx,`SELECT id FROM users WHERE id=$1 FOR UPDATE`,c.StudentID);e!=nil{return e};if _,e=tx.Exec(ctx,`SELECT id FROM waitlist_entries WHERE id=$1 FOR UPDATE`,c.ID);e!=nil{return e};c.Reasons,e=candidateReasons(ctx,tx,slot,c.ID);if e!=nil{return e};if len(c.Reasons)==0{selected=i;if _,e=tx.Exec(ctx,`RELEASE SAVEPOINT candidate`);e!=nil{return e};break};if _,e=tx.Exec(ctx,`ROLLBACK TO SAVEPOINT candidate`);e!=nil{return e};if _,e=tx.Exec(ctx,`RELEASE SAVEPOINT candidate`);e!=nil{return e}}
- _,explanation:=allocation.Explain(candidates,slot.Start,slot.End,now,slot.ServiceID)
- var entry any;if selected>=0{entry=candidates[selected].ID;explanation.Result="offer_created";explanation.SelectedPosition=1}
- var decision string;b,_:=json.Marshal(explanation);if e=tx.QueryRow(ctx,`INSERT INTO decisions(organization_id,slot_id,policy_version,selected_entry_id,explanation) VALUES($1,$2,$3,$4,$5) RETURNING id`,slot.OrgID,slot.ID,allocation.PolicyVersion,entry,b).Scan(&decision);e!=nil{return e}
- if selected<0{return Audit(ctx,tx,slot.OrgID,"","AllocationEvaluated",decision,explanation)}
- c:=candidates[selected];var claim,offer string
- if e=tx.QueryRow(ctx,`INSERT INTO claims(slot_id,organization_id,student_id,entry_id,starts_at,ends_at,state) VALUES($1,$2,$3,$4,$5,$6,'pending') RETURNING id`,slot.ID,slot.OrgID,c.StudentID,c.ID,slot.Start,slot.End).Scan(&claim);e!=nil{return e}
- var expires time.Time;if e=tx.QueryRow(ctx,`INSERT INTO offers(organization_id,slot_id,entry_id,recipient_id,claim_id,decision_id,created_at,expires_at) SELECT $1,$2,$3,$4,$5,$6,clock_timestamp(),LEAST(clock_timestamp()+make_interval(secs=>offer_seconds),$7::timestamptz) FROM organizations WHERE id=$1 RETURNING id,expires_at`,slot.OrgID,slot.ID,c.ID,c.StudentID,claim,decision,slot.Start).Scan(&offer,&expires);e!=nil{return e}
- explanation.OfferID=offer;b,_=json.Marshal(explanation);if _,e=tx.Exec(ctx,`UPDATE decisions SET explanation=$2 WHERE id=$1`,decision,b);e!=nil{return e};if _,e=tx.Exec(ctx,`UPDATE slots SET state='offer_pending' WHERE id=$1`,slot.ID);e!=nil{return e}
- if e=s.notify(ctx,tx,"OfferCreated",c.StudentID,"A tutoring appointment is waiting for you",fmt.Sprintf("You were next among eligible students who could attend this appointment.\nStarts: %s (UTC)\nAccept before: %s (UTC)\nSign in with this email and review your offer: %s/app/offers",slot.Start.UTC().Format(time.RFC1123),expires.UTC().Format(time.RFC1123),s.AppURL));e!=nil{return e};return Audit(ctx,tx,slot.OrgID,"","OfferCreated",offer,explanation)
+ FROM waitlist_entries w JOIN memberships m ON m.organization_id=w.organization_id AND m.user_id=w.student_id JOIN users u ON u.id=w.student_id WHERE w.id=$1`, id, slot.ID, slot.Start, slot.End).Scan(&status, &enabled, &attempted, &conflict, &pending)
+	if err != nil {
+		return nil, err
+	}
+	r := []string{}
+	if status != "active" {
+		r = append(r, "inactive")
+	}
+	if !enabled {
+		r = append(r, "participation_disabled")
+	}
+	if attempted {
+		r = append(r, "previous_offer")
+	}
+	if conflict {
+		r = append(r, "conflicting_reservation")
+	}
+	if pending {
+		r = append(r, "existing_offer")
+	}
+	return r, nil
+}
+func (s *Service) allocate(ctx context.Context, tx pgx.Tx, slot Slot) error {
+	if _, e := tx.Exec(ctx, `UPDATE slots SET allocation_requested=false WHERE id=$1`, slot.ID); e != nil {
+		return e
+	}
+	now, e := DBNow(ctx, tx)
+	if e != nil {
+		return e
+	}
+	if !slot.Start.After(now) {
+		return nil
+	}
+	rows, e := tx.Query(ctx, `SELECT id,student_id,joined_at,preferences FROM waitlist_entries WHERE organization_id=$1 AND service_id=$2 ORDER BY joined_at,id`, slot.OrgID, slot.ServiceID)
+	if e != nil {
+		return e
+	}
+	candidates := []allocation.Candidate{}
+	for rows.Next() {
+		var c allocation.Candidate
+		var raw []byte
+		if e = rows.Scan(&c.ID, &c.StudentID, &c.JoinedAt, &raw); e != nil {
+			rows.Close()
+			return e
+		}
+		if e = json.Unmarshal(raw, &c.Preferences); e != nil {
+			rows.Close()
+			return e
+		}
+		candidates = append(candidates, c)
+	}
+	e = rows.Err()
+	rows.Close()
+	if e != nil {
+		return e
+	}
+	for i := range candidates {
+		candidates[i].Reasons, e = candidateReasons(ctx, tx, slot, candidates[i].ID)
+		if e != nil {
+			return e
+		}
+	}
+	selected := -1
+	// Never SKIP LOCKED here: wait for an earlier candidate, then revalidate. Rejected
+	// candidate locks are released at a savepoint, avoiding cross-slot user lock cycles.
+	for i := range candidates {
+		c := &candidates[i]
+		if !c.Preferences.Match(slot.Start, slot.End) {
+			continue
+		}
+		if _, e = tx.Exec(ctx, `SAVEPOINT candidate`); e != nil {
+			return e
+		}
+		if _, e = tx.Exec(ctx, `SELECT id FROM users WHERE id=$1 FOR UPDATE`, c.StudentID); e != nil {
+			return e
+		}
+		if _, e = tx.Exec(ctx, `SELECT id FROM waitlist_entries WHERE id=$1 FOR UPDATE`, c.ID); e != nil {
+			return e
+		}
+		c.Reasons, e = candidateReasons(ctx, tx, slot, c.ID)
+		if e != nil {
+			return e
+		}
+		if len(c.Reasons) == 0 {
+			selected = i
+			if _, e = tx.Exec(ctx, `RELEASE SAVEPOINT candidate`); e != nil {
+				return e
+			}
+			break
+		}
+		if _, e = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT candidate`); e != nil {
+			return e
+		}
+		if _, e = tx.Exec(ctx, `RELEASE SAVEPOINT candidate`); e != nil {
+			return e
+		}
+	}
+	_, explanation := allocation.Explain(candidates, slot.Start, slot.End, now, slot.ServiceID)
+	var entry any
+	if selected >= 0 {
+		entry = candidates[selected].ID
+		explanation.Result = "offer_created"
+		explanation.SelectedPosition = 1
+	}
+	var decision string
+	b, _ := json.Marshal(explanation)
+	if e = tx.QueryRow(ctx, `INSERT INTO decisions(organization_id,slot_id,policy_version,selected_entry_id,explanation) VALUES($1,$2,$3,$4,$5) RETURNING id`, slot.OrgID, slot.ID, allocation.PolicyVersion, entry, b).Scan(&decision); e != nil {
+		return e
+	}
+	if selected < 0 {
+		return Audit(ctx, tx, slot.OrgID, "", "AllocationEvaluated", decision, explanation)
+	}
+	c := candidates[selected]
+	var claim, offer string
+	if e = tx.QueryRow(ctx, `INSERT INTO claims(slot_id,organization_id,student_id,entry_id,starts_at,ends_at,state) VALUES($1,$2,$3,$4,$5,$6,'pending') RETURNING id`, slot.ID, slot.OrgID, c.StudentID, c.ID, slot.Start, slot.End).Scan(&claim); e != nil {
+		return e
+	}
+	var expires time.Time
+	if e = tx.QueryRow(ctx, `INSERT INTO offers(organization_id,slot_id,entry_id,recipient_id,claim_id,decision_id,created_at,expires_at) SELECT $1,$2,$3,$4,$5,$6,clock_timestamp(),LEAST(clock_timestamp()+make_interval(secs=>offer_seconds),$7::timestamptz) FROM organizations WHERE id=$1 RETURNING id,expires_at`, slot.OrgID, slot.ID, c.ID, c.StudentID, claim, decision, slot.Start).Scan(&offer, &expires); e != nil {
+		return e
+	}
+	explanation.OfferID = offer
+	b, _ = json.Marshal(explanation)
+	if _, e = tx.Exec(ctx, `UPDATE decisions SET explanation=$2 WHERE id=$1`, decision, b); e != nil {
+		return e
+	}
+	if _, e = tx.Exec(ctx, `UPDATE slots SET state='offer_pending' WHERE id=$1`, slot.ID); e != nil {
+		return e
+	}
+	if e = s.notify(ctx, tx, "OfferCreated", c.StudentID, "A tutoring appointment is waiting for you", fmt.Sprintf("You were next among eligible students who could attend this appointment.\nStarts: %s (UTC)\nAccept before: %s (UTC)\nSign in with this email and review your offer: %s/app/offers", slot.Start.UTC().Format(time.RFC1123), expires.UTC().Format(time.RFC1123), s.AppURL)); e != nil {
+		return e
+	}
+	return Audit(ctx, tx, slot.OrgID, "", "OfferCreated", offer, explanation)
 }

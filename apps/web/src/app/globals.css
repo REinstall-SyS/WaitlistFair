@@ -11,7 +11,7 @@
   --foreground: #24392f;
   --primary: #285c48;
   --primary-light: #e8efe6;
-  --muted: #748078;
+  --muted: #62715f;
   --border: #e4e8e0;
   --paper: #fff;
   --radius: 14px;
@@ -118,7 +118,7 @@ select {
 }
 input:disabled {
   background: #f2f4ef;
-  color: #727b71;
+  color: #5f675e;
 }
 input[type="checkbox"] {
   accent-color: var(--primary);
@@ -176,7 +176,7 @@ form > label:not(:first-child) {
   background: #f0f4ee;
 }
 .button-ghost {
-  color: #597061;
+  color: #546a5c;
   background: transparent;
 }
 .button-ghost:hover {
@@ -212,7 +212,7 @@ form > label:not(:first-child) {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 1.65px;
-  color: #7a8878;
+  color: #5d685c;
   display: inline-block;
   margin-bottom: 13px;
 }
@@ -229,7 +229,7 @@ form > label:not(:first-child) {
   font-weight: 400;
 }
 .brand-dot {
-  color: #789d65;
+  color: #526c45;
 }
 .brand-mark {
   height: 32px;
@@ -246,13 +246,13 @@ form > label:not(:first-child) {
   gap: 5px;
   border-radius: 5px;
   padding: 4px 8px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 650;
   white-space: nowrap;
   line-height: 1.4;
   text-transform: capitalize;
   background: #eff1ec;
-  color: #697566;
+  color: #5d685a;
 }
 .badge-active,
 .badge-available,
@@ -261,36 +261,36 @@ form > label:not(:first-child) {
 .badge-booked,
 .badge-offer_created {
   background: #eaf2e8;
-  color: #487042;
+  color: #476e41;
 }
 .badge-pending,
 .badge-offer_pending,
 .badge-amber {
   background: #fff0cf;
-  color: #926e20;
+  color: #80601c;
 }
 .badge-expired,
 .badge-canceled,
 .badge-revoked,
 .badge-closed {
   background: #f7eae7;
-  color: #9b6256;
+  color: #8b584d;
 }
 .badge-paused,
 .badge-declined {
   background: #efeaf7;
-  color: #7b6499;
+  color: #715c8c;
 }
 .badge-student,
 .badge-tutor,
 .badge-admin,
 .badge-soft {
   background: #eef1e9;
-  color: #6c7b64;
+  color: #5c6955;
 }
 .badge-satisfied {
   background: #e7f0f5;
-  color: #497385;
+  color: #436a7b;
 }
 .grow {
   flex: 1;
@@ -356,7 +356,7 @@ form > label:not(:first-child) {
   place-items: center;
   border-radius: 7px;
   font-family: Georgia, serif;
-  color: #5b6d4c;
+  color: #596a4a;
   font-size: 19px;
 }
 .organization-switch > div {
@@ -367,7 +367,7 @@ form > label:not(:first-child) {
   display: block;
   font-size: 7px;
   letter-spacing: 1px;
-  color: #86917c;
+  color: #5f6658;
 }
 .organization-switch strong {
   font-size: 11px;
@@ -375,18 +375,18 @@ form > label:not(:first-child) {
   white-space: nowrap;
 }
 .organization-switch select {
-  font-size: 10px;
+  font-size: 11px;
   min-height: 26px;
   padding: 2px;
   width: 100%;
 }
 .organization-switch > svg {
-  color: #819079;
+  color: #5c6757;
 }
 .nav-section {
   font-size: 8px;
   letter-spacing: 1.6px;
-  color: #939b8e;
+  color: #61665d;
   font-weight: 650;
   padding-left: 12px;
   margin-bottom: 12px;
@@ -395,7 +395,7 @@ form > label:not(:first-child) {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: #7a8579;
+  color: #5f675e;
   font-size: 12px;
   font-weight: 500;
   min-height: 43px;
@@ -414,7 +414,7 @@ form > label:not(:first-child) {
 }
 .nav-count {
   margin-left: auto;
-  font-size: 10px;
+  font-size: 11px;
   display: grid;
   place-items: center;
   background: var(--primary);
@@ -435,7 +435,7 @@ form > label:not(:first-child) {
   margin: 0 3px 23px;
 }
 .fairness-note > svg {
-  color: #8f9c69;
+  color: #5f6846;
   margin-bottom: 8px;
 }
 .fairness-note strong {
@@ -443,10 +443,10 @@ form > label:not(:first-child) {
   font-size: 11px;
 }
 .fairness-note p {
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.7;
   margin-top: 5px;
-  color: #92998b;
+  color: #61665d;
 }
 .user-profile {
   border-top: 1px solid var(--border);
@@ -462,9 +462,9 @@ form > label:not(:first-child) {
   display: grid;
   place-items: center;
   background: #e9e7d8;
-  color: #787954;
+  color: #656647;
   border-radius: 50%;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
 }
 .user-profile > div {
@@ -483,11 +483,11 @@ form > label:not(:first-child) {
   font-weight: 600;
 }
 .user-profile small {
-  font-size: 9px;
-  color: #969d90;
+  font-size: 11px;
+  color: #61665d;
 }
 .user-profile > button {
-  color: #8e978a;
+  color: #60665d;
   padding: 7px;
 }
 .main-wrap {
@@ -513,20 +513,20 @@ form > label:not(:first-child) {
   gap: 15px;
 }
 .breadcrumb {
-  font-size: 10px;
-  color: #969d91;
+  font-size: 11px;
+  color: #61665e;
 }
 .breadcrumb span {
   margin: 0 10px;
-  color: #bac1b4;
+  color: #62665f;
 }
 .breadcrumb strong {
   color: #4f6050;
   font-weight: 500;
 }
 .topbar-right {
-  font-size: 10px;
-  color: #8b9485;
+  font-size: 11px;
+  color: #61675d;
 }
 .status-dot {
   width: 5px;
@@ -545,8 +545,8 @@ form > label:not(:first-child) {
   gap: 7px;
   padding: 8px 42px;
   background: #f2f1e5;
-  color: #827c55;
-  font-size: 9px;
+  color: #6b6646;
+  font-size: 11px;
   border-bottom: 1px solid #e9e7d6;
 }
 .demo-banner a {
@@ -554,7 +554,7 @@ form > label:not(:first-child) {
   display: flex;
   gap: 5px;
   align-items: center;
-  color: #626e51;
+  color: #5e694d;
   font-weight: 600;
 }
 .main-content {
@@ -582,7 +582,7 @@ form > label:not(:first-child) {
 .page-heading p {
   font-size: 11px;
   margin-top: 11px;
-  color: #899180;
+  color: #61665a;
 }
 .page-heading > .button {
   margin-top: 15px;
@@ -605,11 +605,11 @@ form > label:not(:first-child) {
   align-items: center;
   justify-content: space-between;
   font-size: 11px;
-  color: #7e877a;
+  color: #61675d;
 }
 .stat-icon {
   background: #f4f6ef;
-  color: #8e9c79;
+  color: #5f6851;
   border-radius: 6px;
   display: grid;
   place-items: center;
@@ -625,8 +625,8 @@ form > label:not(:first-child) {
   letter-spacing: -1px;
 }
 .stat-card > p {
-  font-size: 9px;
-  color: #9ba28f;
+  font-size: 11px;
+  color: #61665a;
 }
 .welcome-banner {
   background: #edf1e5;
@@ -646,7 +646,7 @@ form > label:not(:first-child) {
 }
 .welcome-banner .eyebrow {
   font-size: 8px;
-  color: #83916b;
+  color: #5f694e;
   margin-bottom: 10px;
 }
 .welcome-banner h2 {
@@ -658,14 +658,14 @@ form > label:not(:first-child) {
   max-width: 360px;
 }
 .welcome-banner p {
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.9;
-  color: #8a947b;
+  color: #606756;
   margin-top: 10px;
   max-width: 340px;
 }
 .welcome-banner a {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 650;
   display: inline-flex;
   gap: 10px;
@@ -694,12 +694,12 @@ form > label:not(:first-child) {
   align-items: center;
   justify-content: center;
   gap: 15px;
-  color: #9fae84;
+  color: #5f684f;
 }
 .art-calendar > span {
   font-size: 6px;
   letter-spacing: 1.8px;
-  color: #9da88d;
+  color: #5f6656;
 }
 .art-calendar > div {
   display: flex;
@@ -720,7 +720,7 @@ form > label:not(:first-child) {
   right: 12px;
   background: #fff9e5;
   border: 1px solid #ebe5cb;
-  color: #b2a669;
+  color: #6c6540;
   border-radius: 12px;
   width: 49px;
   height: 49px;
@@ -753,13 +753,13 @@ form > label:not(:first-child) {
   font-weight: 600;
 }
 .panel-heading p {
-  font-size: 9px;
+  font-size: 11px;
   margin-top: 5px;
-  color: #99a08f;
+  color: #61665b;
 }
 .panel-heading > svg,
 .panel-heading > a {
-  color: #a2ad94;
+  color: #616758;
 }
 .session-row {
   display: flex;
@@ -781,35 +781,35 @@ form > label:not(:first-child) {
   gap: 0;
 }
 .date-tile span {
-  font-size: 7px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #99a18d;
+  color: #61675a;
 }
 .date-tile strong {
   font-size: 18px;
   line-height: 1.3;
   font-weight: 500;
-  color: #657454;
+  color: #5b694c;
 }
 .session-row h3 {
   font-size: 11px;
 }
 .session-row p {
-  font-size: 9px;
+  font-size: 11px;
   margin-top: 3px;
-  color: #9ba18f;
+  color: #61655a;
 }
 .session-row small {
   display: flex;
   align-items: center;
   gap: 5px;
   margin-top: 6px;
-  font-size: 8px;
-  color: #939c85;
+  font-size: 11px;
+  color: #616657;
 }
 .session-row .badge {
-  font-size: 8px;
+  font-size: 11px;
 }
 .waitlist-summary {
   display: flex;
@@ -822,9 +822,9 @@ form > label:not(:first-child) {
   font-size: 11px;
 }
 .waitlist-summary p {
-  font-size: 9px;
+  font-size: 11px;
   margin-top: 4px;
-  color: #99a18e;
+  color: #61675a;
 }
 .subject-icon {
   height: 36px;
@@ -832,15 +832,15 @@ form > label:not(:first-child) {
   display: grid;
   place-items: center;
   background: #f1f0e7;
-  color: #a6a17c;
+  color: #68654e;
   border-radius: 8px;
 }
 .waitlist-summary:nth-child(odd) .subject-icon {
   background: #efedf4;
-  color: #a9a0b7;
+  color: #686371;
 }
 .waitlist-summary .badge {
-  font-size: 8px;
+  font-size: 11px;
 }
 .panel-footnote {
   margin: 5px 17px 16px;
@@ -850,20 +850,20 @@ form > label:not(:first-child) {
   border-radius: 8px;
   display: flex;
   gap: 10px;
-  color: #98a583;
+  color: #5f6752;
 }
 .panel-footnote p {
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1.8;
-  color: #9da58e;
+  color: #626759;
 }
 .app-footer {
   display: flex;
   justify-content: space-between;
   gap: 15px;
   border-top: 1px solid var(--border);
-  font-size: 9px;
-  color: #a1a793;
+  font-size: 11px;
+  color: #626559;
   padding: 19px 42px;
   margin-top: 5px;
 }
@@ -888,11 +888,11 @@ form > label:not(:first-child) {
 }
 .metrics-grid small {
   font-size: 16px;
-  color: #a4ad98;
+  color: #62675b;
 }
 .metrics-grid span {
-  font-size: 10px;
-  color: #929b87;
+  font-size: 11px;
+  color: #61675a;
 }
 .empty {
   padding: 43px 25px;
@@ -906,7 +906,7 @@ form > label:not(:first-child) {
   height: 53px;
   width: 53px;
   background: #f4f6ee;
-  color: #9bab85;
+  color: #5e6851;
   border-radius: 14px;
   margin-bottom: 15px;
 }
@@ -918,7 +918,7 @@ form > label:not(:first-child) {
 .empty p {
   font-size: 11px;
   line-height: 1.8;
-  color: #99a18f;
+  color: #61675b;
 }
 .filter-bar {
   display: flex;
@@ -928,8 +928,8 @@ form > label:not(:first-child) {
 }
 .filter-bar > span {
   margin-left: auto;
-  font-size: 10px;
-  color: #99a18f;
+  font-size: 11px;
+  color: #61675b;
 }
 .filter-bar select {
   width: auto;
@@ -945,7 +945,7 @@ form > label:not(:first-child) {
 .filter-select svg {
   position: absolute;
   left: 13px;
-  color: #9ca68f;
+  color: #606658;
 }
 .filter-select select {
   padding-left: 39px;
@@ -964,7 +964,7 @@ form > label:not(:first-child) {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #879476;
+  color: #5e6752;
   margin-bottom: 18px;
 }
 .slot-date strong {
@@ -976,14 +976,14 @@ form > label:not(:first-child) {
 }
 .slot-information p {
   font-size: 11px;
-  color: #97a08b;
+  color: #62675a;
 }
 .slot-time {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  color: #7e8d70;
+  color: #5d6852;
   margin-top: 18px;
 }
 .slot-actions {
@@ -1021,7 +1021,7 @@ form > label:not(:first-child) {
 }
 .calendar-slot .slot-time {
   margin-top: 8px;
-  font-size: 10px;
+  font-size: 11px;
 }
 .calendar-slot .slot-actions {
   margin: 0;
@@ -1039,10 +1039,10 @@ table {
 }
 thead {
   background: #fafbf7;
-  color: #929c85;
+  color: #606657;
 }
 th {
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.3px;
   font-weight: 550;
   padding: 15px 22px;
@@ -1051,7 +1051,7 @@ th {
 td {
   padding: 18px 22px;
   border-bottom: 1px solid #eff1e9;
-  color: #6c7e5f;
+  color: #5a694f;
 }
 tbody tr:last-child td {
   border-bottom: 0;
@@ -1063,17 +1063,17 @@ td strong {
 }
 td small {
   display: block;
-  color: #9ba58e;
-  font-size: 9px;
+  color: #616759;
+  font-size: 11px;
   margin-top: 5px;
 }
 td .button {
-  font-size: 10px;
+  font-size: 11px;
 }
 .table-empty {
   padding: 15px 23px 26px;
   font-size: 11px;
-  color: #a1a88f;
+  color: #626657;
 }
 .history-panel {
   margin-top: 24px;
@@ -1087,7 +1087,7 @@ td .button {
   border: 1px solid #e0e9d7;
   border-radius: 11px;
   margin-bottom: 22px;
-  color: #92a174;
+  color: #5e684b;
 }
 .policy-banner > div {
   flex: 1;
@@ -1098,14 +1098,14 @@ td .button {
   font-weight: 600;
 }
 .policy-banner p {
-  font-size: 10px;
-  color: #8d9b7a;
+  font-size: 11px;
+  color: #5e6751;
   margin-top: 5px;
   max-width: 700px;
   line-height: 1.8;
 }
 .availability-days {
-  font-size: 10px;
+  font-size: 11px;
 }
 .offer-grid {
   display: grid;
@@ -1125,21 +1125,21 @@ td .button {
   height: 45px;
   width: 45px;
   background: #eff2e5;
-  color: #96a77b;
+  color: #5e694d;
 }
 .offer-countdown {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #aa8847;
+  color: #7a6133;
   background: #fdf5e2;
   padding: 7px 9px;
   border-radius: 6px;
-  font-size: 10px;
+  font-size: 11px;
 }
 .offer-countdown.expired {
   background: #f8ece8;
-  color: #ab7063;
+  color: #88594f;
 }
 .offer-card h2 {
   font-size: 22px;
@@ -1157,8 +1157,8 @@ td .button {
   font-size: 13px;
 }
 .offer-details small {
-  color: #9aa48c;
-  font-size: 10px;
+  color: #616758;
+  font-size: 11px;
   margin-top: 5px;
 }
 .offer-reason {
@@ -1166,17 +1166,17 @@ td .button {
   gap: 11px;
   align-items: start;
   margin-bottom: 22px;
-  color: #90a377;
+  color: #5d694d;
 }
 .offer-reason p {
   font-size: 11px;
   line-height: 1.75;
-  color: #8c9a7b;
+  color: #5f6853;
 }
 .timezone-note {
-  font-size: 10px;
+  font-size: 11px;
   margin: -6px 0 22px;
-  color: #9ba38d;
+  color: #616658;
 }
 .opportunity-banner {
   display: flex;
@@ -1191,18 +1191,18 @@ td .button {
 .opportunity-banner .eyebrow {
   margin-bottom: 7px;
   font-size: 8px;
-  color: #a99864;
+  color: #6f6441;
 }
 .opportunity-banner h2 {
   font-size: 22px;
   font-family: Georgia, serif;
   font-weight: 400;
-  color: #6a6b41;
+  color: #66673f;
 }
 .opportunity-banner p {
-  font-size: 10px;
+  font-size: 11px;
   margin-top: 7px;
-  color: #a29b76;
+  color: #6a664d;
 }
 .opportunity-banner > div {
   flex: 1;
@@ -1214,7 +1214,7 @@ td .button {
   display: grid;
   place-items: center;
   border-radius: 13px;
-  color: #a79759;
+  color: #6f653b;
 }
 .modal-overlay {
   position: fixed;
@@ -1256,7 +1256,7 @@ td .button {
   position: absolute;
   top: 20px;
   right: 18px;
-  color: #8d9982;
+  color: #5f6858;
   padding: 4px;
 }
 .modal > .button-row {
@@ -1290,7 +1290,7 @@ td .button {
 }
 .confirmation-detail span {
   font-size: 11px;
-  color: #949f85;
+  color: #606756;
 }
 .day-picker {
   display: flex;
@@ -1315,14 +1315,14 @@ td .button {
   padding: 9px 5px;
   border-radius: 7px;
   border: 1px solid #e0e6d7;
-  font-size: 10px;
-  color: #9ba58c;
+  font-size: 11px;
+  color: #616758;
   pointer-events: none;
 }
 .day-picker input:checked + span {
   background: #edf2e7;
   border-color: #95ad7f;
-  color: #536d3f;
+  color: #526b3e;
 }
 .day-picker input:focus-visible + span {
   outline: 3px solid #91b6e9;
@@ -1335,7 +1335,7 @@ td .button {
 }
 .field-error {
   font-size: 11px;
-  color: #a84f43;
+  color: #a14b40;
   margin: 5px 0;
   min-height: 7px;
 }
@@ -1356,12 +1356,12 @@ td .button {
 .tabs button {
   font-size: 12px;
   padding: 11px 0;
-  color: #99a08f;
+  color: #61665b;
   border-bottom: 2px solid transparent;
 }
 .tabs button.selected {
   border-color: #66864e;
-  color: #55723f;
+  color: #516d3c;
   font-weight: 600;
 }
 .decision-row {
@@ -1383,19 +1383,19 @@ td .button {
   font-size: 12px;
 }
 .decision-row p {
-  font-size: 10px;
+  font-size: 11px;
   margin-top: 5px;
-  color: #93a080;
+  color: #5f6753;
 }
 .decision-row small {
-  font-size: 9px;
+  font-size: 11px;
   display: block;
   margin-top: 6px;
-  color: #a6ad99;
+  color: #61665a;
 }
 .detail-link {
-  font-size: 10px;
-  color: #7b9365;
+  font-size: 11px;
+  color: #586948;
   margin-left: 12px;
 }
 .pagination {
@@ -1406,11 +1406,11 @@ td .button {
   margin-top: 20px;
 }
 .pagination span {
-  font-size: 10px;
-  color: #9ba58b;
+  font-size: 11px;
+  color: #616757;
 }
 .pagination .button {
-  font-size: 10px;
+  font-size: 11px;
   min-height: 34px;
 }
 .explanation-summary {
@@ -1423,11 +1423,11 @@ td .button {
 }
 .explanation-summary strong {
   font-size: 35px;
-  color: #6d8754;
+  color: #576b43;
 }
 .explanation-summary span {
   font-size: 12px;
-  color: #899c72;
+  color: #5b684c;
 }
 .explanation dl {
   margin: 20px 0;
@@ -1441,12 +1441,12 @@ td .button {
   font-size: 11px;
 }
 .explanation dt {
-  color: #9ba78c;
+  color: #606756;
 }
 .explanation dd {
   margin: 0;
   text-align: right;
-  color: #667f50;
+  color: #566b43;
 }
 .explanation h3 {
   font-size: 12px;
@@ -1462,19 +1462,19 @@ td .button {
   justify-content: space-between;
   font-size: 11px;
   padding: 8px 0;
-  color: #98a285;
+  color: #616755;
 }
 .explanation > p {
-  font-size: 10px;
+  font-size: 11px;
   margin-top: 17px;
 }
 .explanation details {
   font-size: 11px;
   margin-top: 20px;
-  color: #8b9d77;
+  color: #5d694f;
 }
 .explanation pre {
-  font-size: 9px;
+  font-size: 11px;
   background: #f7f9f2;
   overflow: auto;
   padding: 15px;
@@ -1502,7 +1502,7 @@ td .button {
   align-items: center;
   gap: 10px;
   font-size: 11px;
-  color: #909e80;
+  color: #5f6854;
 }
 .inline-form input {
   max-width: 80px;
@@ -1524,7 +1524,7 @@ td .button {
 }
 .setting-row span {
   font-size: 11px;
-  color: #8c9d78;
+  color: #5d6950;
 }
 .profile-panel {
   padding: 28px;
@@ -1560,7 +1560,7 @@ td .button {
   border: 1px solid #d2e3c8;
   border-radius: 9px;
   padding: 13px 17px;
-  color: #5d7d47;
+  color: #516d3e;
   font-size: 12px;
   margin-bottom: 22px;
 }
@@ -1568,7 +1568,7 @@ td .button {
 .error-box {
   background: #fcf0ec;
   border: 1px solid #efd8cc;
-  color: #a16251;
+  color: #8d5647;
 }
 .error-box {
   padding: 15px;
@@ -1639,7 +1639,7 @@ td .button {
 .verify-card a {
   font-size: 11px;
   text-align: center;
-  color: #8b9d77;
+  color: #5d694f;
 }
 .onboarding {
   max-width: 500px;
@@ -1778,14 +1778,14 @@ td .button {
 .journey small {
   display: block;
   color: #8da58a;
-  font-size: 9px;
+  font-size: 11px;
   margin-top: 4px;
 }
 .journey > div > svg {
   color: #8aa577;
 }
 .login-story footer {
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.2px;
   color: #83a080;
   position: relative;
@@ -1838,8 +1838,8 @@ td .button {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  font-size: 9px;
-  color: #9aa68d;
+  font-size: 11px;
+  color: #5f6657;
   margin-top: 18px;
 }
 .demo-login {
@@ -1850,14 +1850,14 @@ td .button {
   margin-top: 35px;
 }
 .demo-login .badge {
-  font-size: 7px;
+  font-size: 11px;
   letter-spacing: 0.8px;
   padding: 4px 7px;
 }
 .demo-login p {
-  font-size: 9px;
+  font-size: 11px;
   margin: 11px 0;
-  color: #96a184;
+  color: #616855;
 }
 .demo-chips {
   display: flex;
@@ -1866,28 +1866,28 @@ td .button {
   margin-bottom: 13px;
 }
 .demo-chips button {
-  font-size: 9px;
+  font-size: 11px;
   padding: 7px 8px;
   background: #fff;
   border: 1px solid #e3e8d7;
   border-radius: 5px;
-  color: #80916d;
+  color: #5d694f;
 }
 .demo-chips button:hover {
   background: #eaf0e0;
 }
 .demo-login a {
-  font-size: 9px;
+  font-size: 11px;
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #7c9263;
+  color: #5a6a48;
 }
 .login-footer {
   text-align: center;
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1.9;
-  color: #abb29c;
+  color: #63675a;
   margin-top: 29px;
 }
 .login-footer a {
@@ -1901,13 +1901,13 @@ td .button {
   border-radius: 12px;
   margin-top: 28px;
   padding: 28px 20px;
-  color: #8b9f72;
+  color: #5b684b;
 }
 .sent-panel > svg {
   margin-bottom: 13px;
 }
 .sent-panel h3 {
-  color: #6d8354;
+  color: #596b44;
 }
 .sent-panel p {
   font-size: 11px;
@@ -1962,7 +1962,7 @@ td .button {
     font-size: 11px;
   }
   .session-row small {
-    font-size: 10px;
+    font-size: 11px;
   }
 }
 @media (max-width: 1150px) {
@@ -2035,7 +2035,7 @@ td .button {
     gap: 7px;
   }
   .organization-switch strong {
-    font-size: 9px;
+    font-size: 11px;
   }
   .nav-link {
     font-size: 11px;
@@ -2050,7 +2050,7 @@ td .button {
   }
   .demo-banner {
     padding: 8px 22px;
-    font-size: 8px;
+    font-size: 11px;
   }
   .page-heading {
     align-items: flex-start;
@@ -2059,7 +2059,7 @@ td .button {
     font-size: 24px;
   }
   .page-heading > .button {
-    font-size: 10px;
+    font-size: 11px;
     padding: 9px 12px;
   }
   .stat-grid {
@@ -2069,10 +2069,10 @@ td .button {
     padding: 15px;
   }
   .stat-card > div {
-    font-size: 10px;
+    font-size: 11px;
   }
   .stat-card > p {
-    font-size: 8px;
+    font-size: 11px;
     min-height: 24px;
   }
   .overview-columns {
@@ -2100,7 +2100,7 @@ td .button {
     right: -5px;
   }
   .welcome-banner p {
-    font-size: 10px;
+    font-size: 11px;
   }
   .calendar-slot {
     flex-wrap: wrap;
@@ -2130,7 +2130,7 @@ td .button {
     font-size: 27px;
   }
   .topbar .badge {
-    font-size: 8px;
+    font-size: 11px;
   }
   .today-label {
     display: none;
@@ -2162,11 +2162,11 @@ td .button {
     display: grid;
     place-items: center;
     padding: 3px;
-    color: #7e8c72;
+    color: #5e6855;
   }
   .mobile-close {
     display: block;
-    color: #9aa58e;
+    color: #616759;
   }
   .sidebar-brand {
     display: flex;
@@ -2190,7 +2190,7 @@ td .button {
     padding: 12px 20px;
   }
   .breadcrumb {
-    font-size: 9px;
+    font-size: 11px;
   }
   .topbar > div {
     gap: 10px;
@@ -2200,7 +2200,7 @@ td .button {
     gap: 6px;
   }
   .demo-banner a {
-    font-size: 8px;
+    font-size: 11px;
   }
   .page-heading {
     display: block;
@@ -2226,7 +2226,7 @@ td .button {
     padding: 13px 11px;
   }
   .stat-card > div {
-    font-size: 9px;
+    font-size: 11px;
     gap: 3px;
   }
   .stat-icon {
@@ -2237,7 +2237,7 @@ td .button {
     margin: 14px 0 9px;
   }
   .stat-card > p {
-    font-size: 8px;
+    font-size: 11px;
     line-height: 1.8;
     min-height: 28px;
   }
@@ -2254,7 +2254,7 @@ td .button {
     max-width: 70%;
   }
   .welcome-banner p {
-    font-size: 10px;
+    font-size: 11px;
   }
   .banner-art {
     min-width: 100px;
@@ -2280,11 +2280,11 @@ td .button {
     width: 21px;
   }
   .welcome-banner a {
-    font-size: 10px;
+    font-size: 11px;
   }
   .app-footer {
     padding: 18px 20px;
-    font-size: 8px;
+    font-size: 11px;
   }
   .slot-grid {
     grid-template-columns: 1fr;
@@ -2299,7 +2299,7 @@ td .button {
   }
   .filter-bar select {
     min-width: 130px;
-    font-size: 10px;
+    font-size: 11px;
   }
   .filter-select select {
     min-width: 180px;
@@ -2330,7 +2330,7 @@ td .button {
     display: none;
   }
   .policy-banner p {
-    font-size: 9px;
+    font-size: 11px;
     line-height: 1.85;
   }
   .policy-banner strong {
@@ -2369,13 +2369,13 @@ td .button {
     font-size: 11px;
   }
   .decision-row p {
-    font-size: 9px;
+    font-size: 11px;
   }
   .decision-row small {
-    font-size: 8px;
+    font-size: 11px;
   }
   .decision-row .badge {
-    font-size: 8px;
+    font-size: 11px;
   }
   .decision-row .subject-icon {
     min-width: 29px;
@@ -2420,7 +2420,7 @@ td .button {
     font-size: 8px;
   }
   .login-footer {
-    font-size: 9px;
+    font-size: 11px;
   }
   .modal {
     padding: 26px;
@@ -2439,7 +2439,7 @@ td .button {
     padding: 18px;
   }
   .setting-row span {
-    font-size: 10px;
+    font-size: 11px;
     text-align: right;
     max-width: 60%;
   }
@@ -2459,7 +2459,7 @@ td .button {
     max-width: 250px;
   }
   .explanation dl > div {
-    font-size: 10px;
+    font-size: 11px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -1,15 +1,134 @@
 package allocation
 
-import("fmt";"sort";"time")
-const PolicyVersion="fifo-eligible/v1"
-type Window struct{Day int `json:"day"`;Start string `json:"start"`;End string `json:"end"`}
-type Preferences struct{Timezone string `json:"timezone"`;Windows []Window `json:"windows"`}
-func(p Preferences)Validate()error{if _,e:=time.LoadLocation(p.Timezone);e!=nil{return fmt.Errorf("choose an IANA time zone")};if len(p.Windows)==0||len(p.Windows)>28{return fmt.Errorf("choose between 1 and 28 availability windows")};for _,w:=range p.Windows{a,e:=time.Parse("15:04",w.Start);if e!=nil{return fmt.Errorf("invalid start time")};b,e:=time.Parse("15:04",w.End);if e!=nil||!b.After(a)||w.Day<0||w.Day>6{return fmt.Errorf("invalid availability window")}};return nil}
+import (
+	"fmt"
+	"sort"
+	"time"
+)
+
+const PolicyVersion = "fifo-eligible/v1"
+
+type Window struct {
+	Day   int    `json:"day"`
+	Start string `json:"start"`
+	End   string `json:"end"`
+}
+type Preferences struct {
+	Timezone string   `json:"timezone"`
+	Windows  []Window `json:"windows"`
+}
+
+func (p Preferences) Validate() error {
+	if _, e := time.LoadLocation(p.Timezone); e != nil {
+		return fmt.Errorf("choose an IANA time zone")
+	}
+	if len(p.Windows) == 0 || len(p.Windows) > 28 {
+		return fmt.Errorf("choose between 1 and 28 availability windows")
+	}
+	for _, w := range p.Windows {
+		a, e := time.Parse("15:04", w.Start)
+		if e != nil {
+			return fmt.Errorf("invalid start time")
+		}
+		b, e := time.Parse("15:04", w.End)
+		if e != nil || !b.After(a) || w.Day < 0 || w.Day > 6 {
+			return fmt.Errorf("invalid availability window")
+		}
+	}
+	return nil
+}
+
 // Match projects real instants into the student's IANA zone. Ambiguous wall times match
 // both occurrences; nonexistent wall times never arise from an instant. Overnight windows
 // are intentionally disallowed and can be represented by two day windows.
-func(p Preferences)Match(start,end time.Time)bool{zone,e:=time.LoadLocation(p.Timezone);if e!=nil||!end.After(start){return false};a,b:=start.In(zone),end.In(zone);if a.Year()!=b.Year()||a.YearDay()!=b.YearDay(){return false};for _,w:=range p.Windows{if int(a.Weekday())!=w.Day{continue};inside:=func(t time.Time)bool{local:=t.In(zone);clock:=local.Format("15:04:05.000000000");return int(local.Weekday())==w.Day&&clock>=w.Start+":00.000000000"&&clock<=w.End+":00.000000000"};valid:=inside(start)&&inside(end);for current:=start;valid;{_,boundary:=current.In(zone).ZoneBounds();if boundary.IsZero()||!boundary.Before(end){break};valid=inside(boundary.Add(-time.Nanosecond))&&inside(boundary);current=boundary};if valid{return true}};return false}
-type Candidate struct{ID string `json:"entry_id"`;StudentID string `json:"-"`;JoinedAt time.Time `json:"-"`;Preferences Preferences `json:"-"`;Reasons []string `json:"reasons"`}
-type Evidence struct{EntryID string `json:"entry_id"`;Reasons []string `json:"reasons"`}
-type Explanation struct{Policy string `json:"policy_version"`;Considered int `json:"considered"`;Excluded int `json:"excluded"`;Eligible int `json:"eligible"`;Reasons map[string]int `json:"exclusion_reasons"`;Candidates []Evidence `json:"candidates"`;SelectedPosition int `json:"selected_eligible_position"`;TieBreaker string `json:"tie_breaker"`;StartsAt time.Time `json:"starts_at"`;EndsAt time.Time `json:"ends_at"`;ServiceID string `json:"service_id"`;SelectedAt time.Time `json:"selected_at"`;OfferID string `json:"offer_id,omitempty"`;Result string `json:"result"`}
-func Explain(candidates []Candidate,start,end,now time.Time,service string)([]Candidate,Explanation){sort.Slice(candidates,func(i,j int)bool{if candidates[i].JoinedAt.Equal(candidates[j].JoinedAt){return candidates[i].ID<candidates[j].ID};return candidates[i].JoinedAt.Before(candidates[j].JoinedAt)});x:=Explanation{Policy:PolicyVersion,Considered:len(candidates),Reasons:map[string]int{},Candidates:[]Evidence{},TieBreaker:"joined_at ASC, entry_id ASC",StartsAt:start,EndsAt:end,ServiceID:service,SelectedAt:now,Result:"no_eligible_candidate"};eligible:=[]Candidate{};for _,c:=range candidates{if !c.Preferences.Match(start,end){c.Reasons=append(c.Reasons,"unavailable")};if len(c.Reasons)>0{x.Excluded++;for _,r:=range c.Reasons{x.Reasons[r]++}}else{eligible=append(eligible,c)};x.Candidates=append(x.Candidates,Evidence{EntryID:c.ID,Reasons:c.Reasons})};x.Eligible=len(eligible);if len(eligible)>0{x.SelectedPosition=1};return eligible,x}
+func (p Preferences) Match(start, end time.Time) bool {
+	zone, e := time.LoadLocation(p.Timezone)
+	if e != nil || !end.After(start) {
+		return false
+	}
+	a, b := start.In(zone), end.In(zone)
+	if a.Year() != b.Year() || a.YearDay() != b.YearDay() {
+		return false
+	}
+	for _, w := range p.Windows {
+		if int(a.Weekday()) != w.Day {
+			continue
+		}
+		inside := func(t time.Time) bool {
+			local := t.In(zone)
+			clock := local.Format("15:04:05.000000000")
+			return int(local.Weekday()) == w.Day && clock >= w.Start+":00.000000000" && clock <= w.End+":00.000000000"
+		}
+		valid := inside(start) && inside(end)
+		for current := start; valid; {
+			_, boundary := current.In(zone).ZoneBounds()
+			if boundary.IsZero() || !boundary.Before(end) {
+				break
+			}
+			valid = inside(boundary.Add(-time.Nanosecond)) && inside(boundary)
+			current = boundary
+		}
+		if valid {
+			return true
+		}
+	}
+	return false
+}
+
+type Candidate struct {
+	ID          string      `json:"entry_id"`
+	StudentID   string      `json:"-"`
+	JoinedAt    time.Time   `json:"-"`
+	Preferences Preferences `json:"-"`
+	Reasons     []string    `json:"reasons"`
+}
+type Evidence struct {
+	EntryID string   `json:"entry_id"`
+	Reasons []string `json:"reasons"`
+}
+type Explanation struct {
+	Policy           string         `json:"policy_version"`
+	Considered       int            `json:"considered"`
+	Excluded         int            `json:"excluded"`
+	Eligible         int            `json:"eligible"`
+	Reasons          map[string]int `json:"exclusion_reasons"`
+	Candidates       []Evidence     `json:"candidates"`
+	SelectedPosition int            `json:"selected_eligible_position"`
+	TieBreaker       string         `json:"tie_breaker"`
+	StartsAt         time.Time      `json:"starts_at"`
+	EndsAt           time.Time      `json:"ends_at"`
+	ServiceID        string         `json:"service_id"`
+	SelectedAt       time.Time      `json:"selected_at"`
+	OfferID          string         `json:"offer_id,omitempty"`
+	Result           string         `json:"result"`
+}
+
+func Explain(candidates []Candidate, start, end, now time.Time, service string) ([]Candidate, Explanation) {
+	sort.Slice(candidates, func(i, j int) bool {
+		if candidates[i].JoinedAt.Equal(candidates[j].JoinedAt) {
+			return candidates[i].ID < candidates[j].ID
+		}
+		return candidates[i].JoinedAt.Before(candidates[j].JoinedAt)
+	})
+	x := Explanation{Policy: PolicyVersion, Considered: len(candidates), Reasons: map[string]int{}, Candidates: []Evidence{}, TieBreaker: "joined_at ASC, entry_id ASC", StartsAt: start, EndsAt: end, ServiceID: service, SelectedAt: now, Result: "no_eligible_candidate"}
+	eligible := []Candidate{}
+	for _, c := range candidates {
+		if !c.Preferences.Match(start, end) {
+			c.Reasons = append(c.Reasons, "unavailable")
+		}
+		if len(c.Reasons) > 0 {
+			x.Excluded++
+			for _, r := range c.Reasons {
+				x.Reasons[r]++
+			}
+		} else {
+			eligible = append(eligible, c)
+		}
+		x.Candidates = append(x.Candidates, Evidence{EntryID: c.ID, Reasons: c.Reasons})
+	}
+	x.Eligible = len(eligible)
+	if len(eligible) > 0 {
+		x.SelectedPosition = 1
+	}
+	return eligible, x
+}

@@ -33,6 +33,8 @@ jobs:
      run: go vet ./...
    - name: Unit, migration, integration and concurrency tests with race detector
      run: go test -race -count=1 -v ./... | tee /tmp/backend-tests.txt
+   - name: Repeat the 100-request contention workload ten times
+     run: go test -race -count=10 -run Test100ConcurrentHTTPClaims -v ./tests/concurrency | tee /tmp/stress-tests.txt
    - name: Formatting and module checks
      run: git diff --exit-code -- '*.go' go.mod go.sum
    - name: Record runner conditions
@@ -49,6 +51,7 @@ jobs:
       path: |
        /tmp/go-source.tgz
        /tmp/backend-tests.txt
+       /tmp/stress-tests.txt
        /tmp/runner.txt
  frontend:
   runs-on: ubuntu-latest

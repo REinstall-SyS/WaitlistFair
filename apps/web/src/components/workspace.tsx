@@ -263,7 +263,7 @@ export function Workspace() {
             </button>
           </div>
           <div className="organization-switch">
-            <span className="org-avatar">N</span>
+            <span className="org-avatar">{org.name[0]}</span>
             <div>
               <small>YOUR TUTORING CENTER</small>
               {me.organizations.length > 1 ? (

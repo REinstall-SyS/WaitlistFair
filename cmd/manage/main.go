@@ -1,4 +1,51 @@
 package main
-import("context";"fmt";"os";"time";"github.com/REinstall-SyS/WaitlistFair/internal/config";"github.com/REinstall-SyS/WaitlistFair/internal/demo";"github.com/REinstall-SyS/WaitlistFair/internal/persistence")
-func main(){if e:=run();e!=nil{fmt.Fprintln(os.Stderr,e);os.Exit(1)}}
-func run()error{c,e:=config.Load();if e!=nil{return e};ctx,cancel:=context.WithTimeout(context.Background(),time.Minute);defer cancel();db,e:=persistence.Open(ctx,c.DatabaseURL);if e!=nil{return e};defer db.Close();if len(os.Args)<2{return fmt.Errorf("usage: manage migrate|seed|expire-demo")};switch os.Args[1]{case "migrate":return persistence.Migrate(ctx,db);case "seed":if c.Production{return fmt.Errorf("demo commands are disabled in production")};return demo.Seed(ctx,db);case "expire-demo":if c.Production{return fmt.Errorf("demo commands are disabled in production")};tag,e:=db.Exec(ctx,`UPDATE offers SET expires_at=clock_timestamp() WHERE organization_id=$1 AND state='pending' AND created_at<clock_timestamp()`,demo.OrgID);fmt.Printf("Expired %d demo offers; the worker will advance the queue.\n",tag.RowsAffected());return e};return fmt.Errorf("unknown command")}
+
+import (
+	"context"
+	"fmt"
+	"github.com/REinstall-SyS/WaitlistFair/internal/config"
+	"github.com/REinstall-SyS/WaitlistFair/internal/demo"
+	"github.com/REinstall-SyS/WaitlistFair/internal/persistence"
+	"os"
+	"time"
+)
+
+func main() {
+	if e := run(); e != nil {
+		fmt.Fprintln(os.Stderr, e)
+		os.Exit(1)
+	}
+}
+func run() error {
+	c, e := config.Load()
+	if e != nil {
+		return e
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	db, e := persistence.Open(ctx, c.DatabaseURL)
+	if e != nil {
+		return e
+	}
+	defer db.Close()
+	if len(os.Args) < 2 {
+		return fmt.Errorf("usage: manage migrate|seed|expire-demo")
+	}
+	switch os.Args[1] {
+	case "migrate":
+		return persistence.Migrate(ctx, db)
+	case "seed":
+		if c.Production {
+			return fmt.Errorf("demo commands are disabled in production")
+		}
+		return demo.Seed(ctx, db)
+	case "expire-demo":
+		if c.Production {
+			return fmt.Errorf("demo commands are disabled in production")
+		}
+		tag, e := db.Exec(ctx, `UPDATE offers SET expires_at=clock_timestamp() WHERE organization_id=$1 AND state='pending' AND created_at<clock_timestamp()`, demo.OrgID)
+		fmt.Printf("Expired %d demo offers; the worker will advance the queue.\n", tag.RowsAffected())
+		return e
+	}
+	return fmt.Errorf("unknown command")
+}

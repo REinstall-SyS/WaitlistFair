@@ -1,4 +1,67 @@
 package main
-import("context";"errors";"log/slog";"net/http";"os";"os/signal";"syscall";"time";"github.com/REinstall-SyS/WaitlistFair/internal/api";"github.com/REinstall-SyS/WaitlistFair/internal/appointments";"github.com/REinstall-SyS/WaitlistFair/internal/auth";"github.com/REinstall-SyS/WaitlistFair/internal/config";"github.com/REinstall-SyS/WaitlistFair/internal/demo";"github.com/REinstall-SyS/WaitlistFair/internal/persistence")
-func main(){log:=slog.New(slog.NewJSONHandler(os.Stdout,nil));if e:=run(log);e!=nil{log.Error("api stopped","error",e.Error());os.Exit(1)}}
-func run(log *slog.Logger)error{c,e:=config.Load();if e!=nil{return e};ctx,stop:=signal.NotifyContext(context.Background(),os.Interrupt,syscall.SIGTERM);defer stop();startup,cancel:=context.WithTimeout(ctx,time.Minute);defer cancel();db,e:=persistence.Open(startup,c.DatabaseURL);if e!=nil{return e};defer db.Close();if e=persistence.Migrate(startup,db);e!=nil{return e};if os.Getenv("SEED_DEMO")=="true"{if c.Production{return errors.New("SEED_DEMO is not permitted in production")};if e=demo.Seed(startup,db);e!=nil{return e}};server:=&api.Server{DB:db,Config:c,Appointments:&appointments.Service{DB:db,AppURL:c.AppURL},Auth:&auth.Service{DB:db,AppURL:c.AppURL},Log:log};httpServer:=&http.Server{Addr:c.Addr,Handler:server.Handler(),ReadHeaderTimeout:5*time.Second,ReadTimeout:15*time.Second,WriteTimeout:30*time.Second,IdleTimeout:60*time.Second,MaxHeaderBytes:16384};done:=make(chan error,1);go func(){log.Info("api listening","addr",c.Addr);done<-httpServer.ListenAndServe()}();select{case e:=<-done:if !errors.Is(e,http.ErrServerClosed){return e};case<-ctx.Done():shutdown,cancel:=context.WithTimeout(context.Background(),10*time.Second);defer cancel();return httpServer.Shutdown(shutdown)};return nil}
+
+import (
+	"context"
+	"errors"
+	"github.com/REinstall-SyS/WaitlistFair/internal/api"
+	"github.com/REinstall-SyS/WaitlistFair/internal/appointments"
+	"github.com/REinstall-SyS/WaitlistFair/internal/auth"
+	"github.com/REinstall-SyS/WaitlistFair/internal/config"
+	"github.com/REinstall-SyS/WaitlistFair/internal/demo"
+	"github.com/REinstall-SyS/WaitlistFair/internal/persistence"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+)
+
+func main() {
+	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	if e := run(log); e != nil {
+		log.Error("api stopped", "error", e.Error())
+		os.Exit(1)
+	}
+}
+func run(log *slog.Logger) error {
+	c, e := config.Load()
+	if e != nil {
+		return e
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	startup, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	db, e := persistence.Open(startup, c.DatabaseURL)
+	if e != nil {
+		return e
+	}
+	defer db.Close()
+	if e = persistence.Migrate(startup, db); e != nil {
+		return e
+	}
+	if os.Getenv("SEED_DEMO") == "true" {
+		if c.Production {
+			return errors.New("SEED_DEMO is not permitted in production")
+		}
+		if e = demo.Seed(startup, db); e != nil {
+			return e
+		}
+	}
+	server := &api.Server{DB: db, Config: c, Appointments: &appointments.Service{DB: db, AppURL: c.AppURL}, Auth: &auth.Service{DB: db, AppURL: c.AppURL}, Log: log}
+	httpServer := &http.Server{Addr: c.Addr, Handler: server.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384}
+	done := make(chan error, 1)
+	go func() { log.Info("api listening", "addr", c.Addr); done <- httpServer.ListenAndServe() }()
+	select {
+	case e := <-done:
+		if !errors.Is(e, http.ErrServerClosed) {
+			return e
+		}
+	case <-ctx.Done():
+		shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		return httpServer.Shutdown(shutdown)
+	}
+	return nil
+}
