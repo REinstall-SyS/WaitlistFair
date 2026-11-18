@@ -11,10 +11,10 @@ describe("offer deadline display", () => {
     ).toBe("1:05"));
   it("formats both sides of daylight saving", () => {
     expect(formatTime("2026-11-01T06:30:00Z", "America/Chicago")).toBe(
-      "1:30 AM",
+      "1:30 AM CDT",
     );
     expect(formatTime("2026-11-01T07:30:00Z", "America/Chicago")).toBe(
-      "1:30 AM",
+      "1:30 AM CST",
     );
     expect(formatDate("2026-11-18T01:00:00Z", "America/Chicago")).toContain(
       "Nov 17",

@@ -1,16 +1,24 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CalendarDays, Clock3, Plus, Search } from "lucide-react";
 import { useApp, Empty, Badge } from "./workspace";
 import { Button } from "./ui/button";
 import { Modal } from "./ui/dialog";
 import { type Slot, formatDate, formatTime } from "@/lib/api";
+import { localInstants } from "@/lib/local-time";
 export function Schedules({ mode }: { mode: string }) {
   const { me, org, data, busy, run } = useApp();
   const [subject, setSubject] = useState("");
   const [status, setStatus] = useState("");
   const [creating, setCreating] = useState(false);
   const [creatingSubject, setCreatingSubject] = useState("");
+  const [localStart, setLocalStart] = useState("");
+  const [occurrence, setOccurrence] = useState("");
+  const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const startChoices = useMemo(
+    () => localInstants(localStart, browserZone),
+    [localStart, browserZone],
+  );
   const [action, setAction] = useState<{
     slot: Slot;
     kind: "book" | "cancel" | "close";
@@ -32,15 +40,15 @@ export function Schedules({ mode }: { mode: string }) {
   async function create(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    const start = new Date(String(form.get("starts_at")));
-    if (!Number.isFinite(start.getTime())) return;
+    const start = startChoices.length === 1 ? startChoices[0] : occurrence;
+    if (!start || !startChoices.includes(start)) return;
     if (
       await run(
         `/orgs/${org.id}/slots`,
         {
           service_id: form.get("service_id"),
           tutor_id: form.get("tutor_id"),
-          starts_at: start.toISOString(),
+          starts_at: start,
         },
         "POST",
         "Availability added to your center’s calendar.",
@@ -287,14 +295,58 @@ export function Schedules({ mode }: { mode: string }) {
             id="slot-start"
             name="starts_at"
             type="datetime-local"
+            value={localStart}
+            onChange={(e) => {
+              setLocalStart(e.target.value);
+              setOccurrence("");
+            }}
             required
           />
+          {localStart && startChoices.length === 0 && (
+            <p role="alert" className="field-error">
+              This local time doesn’t exist because clocks change. Choose a
+              different time.
+            </p>
+          )}
+          {startChoices.length > 1 && (
+            <>
+              <label htmlFor="slot-occurrence">
+                When clocks repeat, which occurrence?
+              </label>
+              <select
+                id="slot-occurrence"
+                value={occurrence}
+                onChange={(e) => setOccurrence(e.target.value)}
+                required
+              >
+                <option value="">Choose an occurrence</option>
+                {startChoices.map((instant, index) => (
+                  <option key={instant} value={instant}>
+                    {index === 0 ? "First" : "Second"} occurrence ·{" "}
+                    {new Intl.DateTimeFormat("en-US", {
+                      timeZone: browserZone,
+                      hour: "numeric",
+                      minute: "2-digit",
+                      timeZoneName: "longOffset",
+                    }).format(new Date(instant))}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
           <p className="muted">
             Enter the time in your browser’s time zone:{" "}
             {Intl.DateTimeFormat().resolvedOptions().timeZone}. The saved
             appointment is an exact instant.
           </p>
-          <Button type="submit" disabled={busy}>
+          <Button
+            type="submit"
+            disabled={
+              busy ||
+              startChoices.length === 0 ||
+              (startChoices.length > 1 && !occurrence)
+            }
+          >
             Create appointment
           </Button>
         </form>

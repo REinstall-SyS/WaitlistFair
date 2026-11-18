@@ -39,7 +39,7 @@ Magic links are single-use, expire after 15 minutes, and store only token hashes
 | POST `/tutors` | admin | `{user_id,service_ids:[...]}`; staff membership required; adds subject assignments; 201 `{id}` |
 | PATCH `/settings` | admin | `{offer_seconds:900}`; integer 60–86400; new offers only |
 
-Days use Sunday=0 through Saturday=6. Availability is local, recurring, same-day, and must include the complete appointment. Split overnight preferences into separate days. The browser form supports one window per selected day; the API supports up to 28 windows. Times are stored as UTC instants and interpreted with the retained IANA zone.
+Days use Sunday=0 through Saturday=6. Availability is local, recurring, same-day, and must include the complete appointment. Split overnight preferences into separate days. The browser form supports one window per selected day; the API supports up to 28 windows. Times are stored as UTC instants and interpreted with the retained IANA zone. Administrator date entry uses the browser's IANA zone, rejects nonexistent clock-gap times, and requires a choice between the offset-labeled occurrences of a repeated clock time. The API always requires an unambiguous RFC3339 instant.
 
 Idempotency keys contain 8–100 characters and are scoped to user + exact operation. Reusing a key for a different operation yields 409. Concurrent retries serialize through slot/student locks. An accepted offer cannot create a second booking even if a client supplies a new key.
 

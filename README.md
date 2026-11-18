@@ -68,6 +68,7 @@ The CI end-to-end suite captures screenshots of the actual running Compose appli
 - Email magic links, hashed credentials, seven-day revocable sessions, HttpOnly cookies, origin and CSRF checks, database-backed login throttling.
 - Organization creation, membership roles, subject durations, tutor assignments, appointment creation and closure, direct booking and cancellation.
 - Student waitlists with recurring local availability, pause/resume/withdraw, real offers, acceptance/decline, appointment history, profiles and notification preferences.
+- Appointment entry rejects nonexistent daylight-saving times and asks which occurrence to use when clocks repeat; displayed times include their zone abbreviation.
 - FIFO allocation as an interface-independent domain service, with recorded eligibility reasons, stable ID tie-breaking, and versioned decisions.
 - Atomic slot transitions, active reservation exclusion constraints, idempotent booking/acceptance, and cross-organization authorization.
 - Dedicated worker, fixed offer expiration, transactional outbox, concurrent leases, retries, terminal failures, and SMTP/Mailpit delivery.
