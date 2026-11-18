@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
@@ -87,6 +87,50 @@ export function Workspace() {
   );
   const [busy, setBusy] = useState(false);
   const [menu, setMenu] = useState(false);
+  const [mobile, setMobile] = useState(false);
+  const sidebar = useRef<HTMLElement>(null);
+  const menuTrigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 700px)");
+    const update = () => setMobile(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    if (!mobile || !menu) return;
+    const trigger = menuTrigger.current;
+    const controls = () =>
+      Array.from(
+        sidebar.current?.querySelectorAll<HTMLElement>(
+          "a[href],button:not(:disabled),select",
+        ) || [],
+      ).filter((el) => el.getClientRects().length > 0);
+    controls()[0]?.focus();
+    const keyboard = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenu(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const all = controls();
+      const first = all[0],
+        last = all[all.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      }
+      if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    document.addEventListener("keydown", keyboard);
+    return () => {
+      document.removeEventListener("keydown", keyboard);
+      trigger?.focus();
+    };
+  }, [mobile, menu]);
   const meQuery = useQuery({
     queryKey: ["me"],
     queryFn: () => api<Me>("/me"),
@@ -249,7 +293,16 @@ export function Workspace() {
         <a className="skip-link" href="#main">
           Skip to content
         </a>
-        <aside className={`sidebar ${menu ? "sidebar-open" : ""}`}>
+        <aside
+          id="workspace-navigation"
+          ref={sidebar}
+          className={`sidebar ${menu ? "sidebar-open" : ""}`}
+          inert={mobile && !menu}
+          aria-hidden={mobile && !menu}
+          role={mobile && menu ? "dialog" : undefined}
+          aria-modal={mobile && menu ? true : undefined}
+          aria-label="Workspace navigation"
+        >
           <div className="sidebar-brand">
             <Link href="/app" aria-label="WaitlistFair home">
               <Logo />
@@ -362,11 +415,14 @@ export function Workspace() {
             onClick={() => setMenu(false)}
           />
         )}
-        <div className="main-wrap">
+        <div className="main-wrap" inert={mobile && menu}>
           <header className="topbar">
             <div>
               <button
                 className="mobile-menu"
+                ref={menuTrigger}
+                aria-expanded={menu}
+                aria-controls="workspace-navigation"
                 aria-label="Open navigation"
                 onClick={() => setMenu(true)}
               >

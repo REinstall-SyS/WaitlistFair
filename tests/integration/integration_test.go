@@ -36,6 +36,51 @@ func TestFIFOAndExclusionEvidence(t *testing.T) {
 		t.Fatal("missing unavailable reason")
 	}
 }
+func TestPreferencesAreRevalidatedAfterWaitingForStudentLock(t *testing.T) {
+	f := testutil.New(t, 2)
+	ctx := context.Background()
+	slot := f.Slot(t, f.Start)
+	entry := f.Entry(t, f.Students[0], 2, true)
+	f.Entry(t, f.Students[1], 1, true)
+	change, e := f.DB.Begin(ctx)
+	testutil.Must(t, e)
+	defer change.Rollback(ctx)
+	_, e = change.Exec(ctx, `SELECT id FROM users WHERE id=$1 FOR UPDATE`, f.Students[0])
+	testutil.Must(t, e)
+	done := make(chan error, 1)
+	go func() { done <- f.Service.Allocate(ctx, f.Org, slot) }()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		var waiting bool
+		testutil.Must(t, f.DB.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM pg_stat_activity a JOIN pg_locks l ON l.pid=a.pid WHERE l.relation='users'::regclass AND a.wait_event_type='Lock')`).Scan(&waiting))
+		if waiting {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("allocator did not wait for the earlier student lock")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	_, e = change.Exec(ctx, `UPDATE waitlist_entries SET preferences='{"timezone":"UTC","windows":[{"day":0,"start":"00:00","end":"00:01"}]}' WHERE id=$1`, entry)
+	testutil.Must(t, e)
+	testutil.Must(t, change.Commit(ctx))
+	testutil.Must(t, <-done)
+	_, student := f.Offer(t, slot)
+	if student != f.Students[1] {
+		t.Fatal("allocator used stale availability after waiting for a lock")
+	}
+	var snapshot string
+	testutil.Must(t, f.DB.QueryRow(ctx, `SELECT explanation->'candidates'->0->'availability_snapshot'->'windows'->0->>'end' FROM decisions WHERE slot_id=$1`, slot).Scan(&snapshot))
+	if snapshot != "00:01" {
+		t.Fatal("decision did not preserve the revalidated availability")
+	}
+	_, e = f.DB.Exec(ctx, `UPDATE waitlist_entries SET preferences='{"timezone":"UTC","windows":[]}' WHERE id=$1`, entry)
+	testutil.Must(t, e)
+	testutil.Must(t, f.DB.QueryRow(ctx, `SELECT explanation->'candidates'->0->'availability_snapshot'->'windows'->0->>'end' FROM decisions WHERE slot_id=$1`, slot).Scan(&snapshot))
+	if snapshot != "00:01" {
+		t.Fatal("historical decision changed with current preferences")
+	}
+}
 func TestExpiredOffersAdvanceAndCannotAccept(t *testing.T) {
 	f := testutil.New(t, 2)
 	slot := f.Slot(t, f.Start)
@@ -56,6 +101,30 @@ func TestExpiredOffersAdvanceAndCannotAccept(t *testing.T) {
 	}
 	if _, e = f.Service.Accept(context.Background(), f.Actor(user), offer, "replayed-expiry-key"); !errors.Is(e, appointments.ErrConflict) {
 		t.Fatal("replayed expired offer accepted")
+	}
+}
+func TestParticipationAndConflictExclusionsAreRecorded(t *testing.T) {
+	f := testutil.New(t, 4)
+	ctx := context.Background()
+	slot := f.Slot(t, f.Start)
+	f.Entry(t, f.Students[0], 4, false)
+	f.Entry(t, f.Students[1], 3, true)
+	f.Entry(t, f.Students[2], 2, true)
+	f.Entry(t, f.Students[3], 1, true)
+	_, e := f.DB.Exec(ctx, `UPDATE memberships SET enabled=false WHERE organization_id=$1 AND user_id=$2`, f.Org, f.Students[1])
+	testutil.Must(t, e)
+	conflicting := f.OtherTutorSlot(t, f.Start)
+	_, e = f.Service.Book(ctx, f.Actor(f.Students[2]), conflicting, "conflicting-session-key")
+	testutil.Must(t, e)
+	testutil.Must(t, f.Service.Allocate(ctx, f.Org, slot))
+	_, student := f.Offer(t, slot)
+	if student != f.Students[3] {
+		t.Fatal("selected a student who did not satisfy participation or conflict rules")
+	}
+	for _, reason := range []string{"unavailable", "participation_disabled", "conflicting_reservation"} {
+		if f.Count(t, `SELECT (explanation->'exclusion_reasons'->>$2)::int FROM decisions WHERE slot_id=$1`, slot, reason) != 1 {
+			t.Fatalf("missing exclusion reason: %s", reason)
+		}
 	}
 }
 func TestRevocationAndDeclineAreTerminal(t *testing.T) {
@@ -89,7 +158,11 @@ func TestCrossOrganizationAndRecipientAuthorization(t *testing.T) {
 	f.Entry(t, f.Students[0], 1, true)
 	testutil.Must(t, f.Service.Allocate(context.Background(), f.Org, slot))
 	offer, _ := f.Offer(t, slot)
-	for _, a := range []appointments.Actor{f.Actor(f.Students[1]), other.Actor(other.Students[0]), {UserID: f.Students[0], OrgID: other.Org, Role: "student"}} {
+	var secondOrg string
+	testutil.Must(t, f.DB.QueryRow(context.Background(), `INSERT INTO organizations(name) VALUES('Second permitted center') RETURNING id`).Scan(&secondOrg))
+	_, e := f.DB.Exec(context.Background(), `INSERT INTO memberships(organization_id,user_id,role) VALUES($1,$2,'student')`, secondOrg, f.Students[0])
+	testutil.Must(t, e)
+	for _, a := range []appointments.Actor{f.Actor(f.Students[1]), other.Actor(other.Students[0]), {UserID: f.Students[0], OrgID: other.Org, Role: "student"}, {UserID: f.Students[0], OrgID: secondOrg, Role: "student"}} {
 		if _, e := f.Service.Accept(context.Background(), a, offer, auth.Random()); e == nil {
 			t.Fatal("unauthorized offer accepted")
 		}

@@ -1,4 +1,5 @@
 $ErrorActionPreference = 'Stop'
+if (-not $env:TEST_DATABASE_URL) { throw 'Set TEST_DATABASE_URL to a disposable PostgreSQL database to include integration and concurrency checks.' }
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Push-Location $projectRoot
 try {

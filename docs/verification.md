@@ -10,7 +10,7 @@ This file records only observed results. Before a verified CI run, the existence
 
 `TestDuplicateOfferAcceptance` sends 100 simultaneous HTTP requests against one real pending offer, using the same idempotency key, and requires one booking. Other tests cover lock-coordinated duplicate allocation/cancellation, overlap exclusion, independent slots, FIFO evidence, terminal offer states, session/token replay, CSRF, and cross-organization ownership.
 
-The acceptance/expiration test repeats a concurrent race twelve times around a short database deadline. If expiration wins, that offer must produce no booking; if acceptance wins, at most one booking exists. The test does not impose a predetermined winner on a race.
+The acceptance/expiration test repeats a concurrent race twelve times around a short database deadline. If expiration wins, that offer must produce no booking; if acceptance wins, at most one booking exists. The test does not impose a predetermined winner on a race. Another regression test holds an earlier student's lock, waits until the allocator is blocked on it, changes availability, then releases the lock. The allocator must reread that availability, skip the now-unavailable student, select the next eligible student, and retain the evaluated preference snapshot even after a later edit.
 
 The outbox crash test simulates SMTP acceptance without acknowledgement, expires the persisted lease, redelivers, and verifies one business offer plus two external send attempts. It proves recovery behavior and the limits of exactly-once SMTP delivery. SMTP itself is exercised by the separate real Mailpit end-to-end test.
 

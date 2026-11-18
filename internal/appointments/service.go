@@ -254,15 +254,19 @@ func (s *Service) Allocate(ctx context.Context, org, slotID string) error {
 		return s.allocate(ctx, tx, slot)
 	})
 }
-func candidateReasons(ctx context.Context, tx pgx.Tx, slot Slot, id string) ([]string, error) {
+func candidateReasons(ctx context.Context, tx pgx.Tx, slot Slot, candidate *allocation.Candidate) ([]string, error) {
 	var status string
+	var preferences []byte
 	var enabled, attempted, conflict, pending bool
 	err := tx.QueryRow(ctx, `SELECT w.status,m.enabled AND m.role='student' AND u.deleted_at IS NULL,
  EXISTS(SELECT 1 FROM offers o WHERE o.slot_id=$2 AND o.recipient_id=w.student_id),
  EXISTS(SELECT 1 FROM claims c WHERE c.student_id=w.student_id AND c.state IN ('pending','confirmed') AND tstzrange(c.starts_at,c.ends_at,'[)') && tstzrange($3::timestamptz,$4::timestamptz,'[)')),
- EXISTS(SELECT 1 FROM claims c WHERE c.entry_id=w.id AND c.state='pending')
- FROM waitlist_entries w JOIN memberships m ON m.organization_id=w.organization_id AND m.user_id=w.student_id JOIN users u ON u.id=w.student_id WHERE w.id=$1`, id, slot.ID, slot.Start, slot.End).Scan(&status, &enabled, &attempted, &conflict, &pending)
+ EXISTS(SELECT 1 FROM claims c WHERE c.entry_id=w.id AND c.state='pending'),w.preferences,w.joined_at,clock_timestamp()
+ FROM waitlist_entries w JOIN memberships m ON m.organization_id=w.organization_id AND m.user_id=w.student_id JOIN users u ON u.id=w.student_id WHERE w.id=$1`, candidate.ID, slot.ID, slot.Start, slot.End).Scan(&status, &enabled, &attempted, &conflict, &pending, &preferences, &candidate.JoinedAt, &candidate.EvaluatedAt)
 	if err != nil {
+		return nil, err
+	}
+	if err = json.Unmarshal(preferences, &candidate.Preferences); err != nil {
 		return nil, err
 	}
 	r := []string{}
@@ -318,7 +322,7 @@ func (s *Service) allocate(ctx context.Context, tx pgx.Tx, slot Slot) error {
 		return e
 	}
 	for i := range candidates {
-		candidates[i].Reasons, e = candidateReasons(ctx, tx, slot, candidates[i].ID)
+		candidates[i].Reasons, e = candidateReasons(ctx, tx, slot, &candidates[i])
 		if e != nil {
 			return e
 		}
@@ -340,11 +344,11 @@ func (s *Service) allocate(ctx context.Context, tx pgx.Tx, slot Slot) error {
 		if _, e = tx.Exec(ctx, `SELECT id FROM waitlist_entries WHERE id=$1 FOR UPDATE`, c.ID); e != nil {
 			return e
 		}
-		c.Reasons, e = candidateReasons(ctx, tx, slot, c.ID)
+		c.Reasons, e = candidateReasons(ctx, tx, slot, c)
 		if e != nil {
 			return e
 		}
-		if len(c.Reasons) == 0 {
+		if len(c.Reasons) == 0 && c.Preferences.Match(slot.Start, slot.End) {
 			selected = i
 			if _, e = tx.Exec(ctx, `RELEASE SAVEPOINT candidate`); e != nil {
 				return e
@@ -357,6 +361,10 @@ func (s *Service) allocate(ctx context.Context, tx pgx.Tx, slot Slot) error {
 		if _, e = tx.Exec(ctx, `RELEASE SAVEPOINT candidate`); e != nil {
 			return e
 		}
+	}
+	now, e = DBNow(ctx, tx)
+	if e != nil {
+		return e
 	}
 	_, explanation := allocation.Explain(candidates, slot.Start, slot.End, now, slot.ServiceID)
 	var entry any

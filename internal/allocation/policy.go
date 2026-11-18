@@ -80,11 +80,15 @@ type Candidate struct {
 	StudentID   string      `json:"-"`
 	JoinedAt    time.Time   `json:"-"`
 	Preferences Preferences `json:"-"`
+	EvaluatedAt time.Time   `json:"-"`
 	Reasons     []string    `json:"reasons"`
 }
 type Evidence struct {
-	EntryID string   `json:"entry_id"`
-	Reasons []string `json:"reasons"`
+	EntryID     string      `json:"entry_id"`
+	JoinedAt    time.Time   `json:"joined_at"`
+	Preferences Preferences `json:"availability_snapshot"`
+	EvaluatedAt time.Time   `json:"evaluated_at"`
+	Reasons     []string    `json:"reasons"`
 }
 type Explanation struct {
 	Policy           string         `json:"policy_version"`
@@ -124,7 +128,7 @@ func Explain(candidates []Candidate, start, end, now time.Time, service string) 
 		} else {
 			eligible = append(eligible, c)
 		}
-		x.Candidates = append(x.Candidates, Evidence{EntryID: c.ID, Reasons: c.Reasons})
+		x.Candidates = append(x.Candidates, Evidence{EntryID: c.ID, JoinedAt: c.JoinedAt, Preferences: c.Preferences, EvaluatedAt: c.EvaluatedAt, Reasons: c.Reasons})
 	}
 	x.Eligible = len(eligible)
 	if len(eligible) > 0 {

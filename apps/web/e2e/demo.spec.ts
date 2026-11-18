@@ -150,9 +150,32 @@ test("real email sign-in, waitlist, cancellation, safe acceptance, audit, expiry
     fullPage: true,
   });
   await student.setViewportSize({ width: 390, height: 844 });
+  await expect
+    .poll(() =>
+      student
+        .locator(".sidebar")
+        .evaluate((el) => Math.round(el.getBoundingClientRect().right)),
+    )
+    .toBe(0);
+  await student.getByRole("button", { name: "Open navigation" }).click();
+  await expect(
+    student.getByRole("dialog", { name: "Workspace navigation" }),
+  ).toBeVisible();
+  await student.keyboard.press("Escape");
+  await expect(
+    student.getByRole("button", { name: "Open navigation" }),
+  ).toBeFocused();
+  await expect
+    .poll(() =>
+      student
+        .locator(".sidebar")
+        .evaluate((el) => Math.round(el.getBoundingClientRect().right)),
+    )
+    .toBe(0);
   await student.screenshot({
     path: path.join(screenshots, "student-mobile.png"),
     fullPage: true,
+    animations: "disabled",
   });
   expect(
     await student.evaluate(
@@ -174,6 +197,21 @@ test("real email sign-in, waitlist, cancellation, safe acceptance, audit, expiry
   await expect(
     admin.getByRole("cell", { name: "Offer Accepted", exact: true }),
   ).toBeVisible();
+  await admin.goto("/app/calendar");
+  await admin.getByRole("button", { name: "Create availability" }).click();
+  await admin
+    .getByLabel("Subject", { exact: true })
+    .selectOption("30000000-0000-4000-8000-000000000002");
+  await admin
+    .getByLabel("Tutor", { exact: true })
+    .selectOption("40000000-0000-4000-8000-000000000002");
+  await admin
+    .getByLabel("Start date and time")
+    .fill(new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 16));
+  await admin
+    .getByRole("button", { name: "Create appointment", exact: true })
+    .click();
+  await expect(admin.getByRole("status")).toContainText("Availability added");
   // The following controls operate only on the seeded, explicitly marked demo center.
   const added = await mutate(admin, `/orgs/${org}/members`, {
     email: "ava@demo.waitlistfair.test",
