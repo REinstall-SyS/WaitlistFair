@@ -2251,14 +2251,13 @@ td .button {
     max-width: 280px;
   }
   .welcome-banner > div:first-child {
-    max-width: 70%;
+    max-width: 100%;
   }
   .welcome-banner p {
     font-size: 11px;
   }
   .banner-art {
-    min-width: 100px;
-    margin-left: -5px;
+    display: none;
   }
   .art-calendar {
     width: 100px;
