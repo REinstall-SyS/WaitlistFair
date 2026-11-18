@@ -1,0 +1,223 @@
+?   	github.com/REinstall-SyS/WaitlistFair/cmd/api	[no test files]
+?   	github.com/REinstall-SyS/WaitlistFair/cmd/manage	[no test files]
+?   	github.com/REinstall-SyS/WaitlistFair/cmd/worker	[no test files]
+?   	github.com/REinstall-SyS/WaitlistFair/db	[no test files]
+=== RUN   TestAvailability
+=== RUN   TestAvailability/normal
+=== RUN   TestAvailability/seconds_beyond_boundary
+=== RUN   TestAvailability/wrong_day
+=== RUN   TestAvailability/first_folded_hour
+=== RUN   TestAvailability/second_folded_hour
+=== RUN   TestAvailability/fold_crosses_unavailable_time
+=== RUN   TestAvailability/spring_gap
+=== RUN   TestAvailability/spring_nonexistent_window
+--- PASS: TestAvailability (0.00s)
+    --- PASS: TestAvailability/normal (0.00s)
+    --- PASS: TestAvailability/seconds_beyond_boundary (0.00s)
+    --- PASS: TestAvailability/wrong_day (0.00s)
+    --- PASS: TestAvailability/first_folded_hour (0.00s)
+    --- PASS: TestAvailability/second_folded_hour (0.00s)
+    --- PASS: TestAvailability/fold_crosses_unavailable_time (0.00s)
+    --- PASS: TestAvailability/spring_gap (0.00s)
+    --- PASS: TestAvailability/spring_nonexistent_window (0.00s)
+=== RUN   TestFIFO
+--- PASS: TestFIFO (0.00s)
+=== RUN   TestInvalidPreferences
+--- PASS: TestInvalidPreferences (0.00s)
+PASS
+ok  	github.com/REinstall-SyS/WaitlistFair/internal/allocation	1.018s
+?   	github.com/REinstall-SyS/WaitlistFair/internal/api	[no test files]
+?   	github.com/REinstall-SyS/WaitlistFair/internal/appointments	[no test files]
+?   	github.com/REinstall-SyS/WaitlistFair/internal/auth	[no test files]
+?   	github.com/REinstall-SyS/WaitlistFair/internal/config	[no test files]
+?   	github.com/REinstall-SyS/WaitlistFair/internal/demo	[no test files]
+=== RUN   TestTransitions
+=== RUN   TestTransitions/slot/available/available
+=== RUN   TestTransitions/slot/available/offer_pending
+=== RUN   TestTransitions/slot/available/booked
+=== RUN   TestTransitions/slot/available/closed
+=== RUN   TestTransitions/slot/offer_pending/available
+=== RUN   TestTransitions/slot/offer_pending/offer_pending
+=== RUN   TestTransitions/slot/offer_pending/booked
+=== RUN   TestTransitions/slot/offer_pending/closed
+=== RUN   TestTransitions/slot/booked/available
+=== RUN   TestTransitions/slot/booked/offer_pending
+=== RUN   TestTransitions/slot/booked/booked
+=== RUN   TestTransitions/slot/booked/closed
+=== RUN   TestTransitions/slot/closed/available
+=== RUN   TestTransitions/slot/closed/offer_pending
+=== RUN   TestTransitions/slot/closed/booked
+=== RUN   TestTransitions/slot/closed/closed
+=== RUN   TestTransitions/offer/pending/pending
+=== RUN   TestTransitions/offer/pending/accepted
+=== RUN   TestTransitions/offer/pending/declined
+=== RUN   TestTransitions/offer/pending/expired
+=== RUN   TestTransitions/offer/pending/revoked
+=== RUN   TestTransitions/offer/accepted/pending
+=== RUN   TestTransitions/offer/accepted/accepted
+=== RUN   TestTransitions/offer/accepted/declined
+=== RUN   TestTransitions/offer/accepted/expired
+=== RUN   TestTransitions/offer/accepted/revoked
+=== RUN   TestTransitions/offer/declined/pending
+=== RUN   TestTransitions/offer/declined/accepted
+=== RUN   TestTransitions/offer/declined/declined
+=== RUN   TestTransitions/offer/declined/expired
+=== RUN   TestTransitions/offer/declined/revoked
+=== RUN   TestTransitions/offer/expired/pending
+=== RUN   TestTransitions/offer/expired/accepted
+=== RUN   TestTransitions/offer/expired/declined
+=== RUN   TestTransitions/offer/expired/expired
+=== RUN   TestTransitions/offer/expired/revoked
+=== RUN   TestTransitions/offer/revoked/pending
+=== RUN   TestTransitions/offer/revoked/accepted
+=== RUN   TestTransitions/offer/revoked/declined
+=== RUN   TestTransitions/offer/revoked/expired
+=== RUN   TestTransitions/offer/revoked/revoked
+=== RUN   TestTransitions/waitlist/active/active
+=== RUN   TestTransitions/waitlist/active/paused
+=== RUN   TestTransitions/waitlist/active/satisfied
+=== RUN   TestTransitions/waitlist/active/withdrawn
+=== RUN   TestTransitions/waitlist/paused/active
+=== RUN   TestTransitions/waitlist/paused/paused
+=== RUN   TestTransitions/waitlist/paused/satisfied
+=== RUN   TestTransitions/waitlist/paused/withdrawn
+=== RUN   TestTransitions/waitlist/satisfied/active
+=== RUN   TestTransitions/waitlist/satisfied/paused
+=== RUN   TestTransitions/waitlist/satisfied/satisfied
+=== RUN   TestTransitions/waitlist/satisfied/withdrawn
+=== RUN   TestTransitions/waitlist/withdrawn/active
+=== RUN   TestTransitions/waitlist/withdrawn/paused
+=== RUN   TestTransitions/waitlist/withdrawn/satisfied
+=== RUN   TestTransitions/waitlist/withdrawn/withdrawn
+--- PASS: TestTransitions (0.01s)
+    --- PASS: TestTransitions/slot/available/available (0.00s)
+    --- PASS: TestTransitions/slot/available/offer_pending (0.00s)
+    --- PASS: TestTransitions/slot/available/booked (0.00s)
+    --- PASS: TestTransitions/slot/available/closed (0.00s)
+    --- PASS: TestTransitions/slot/offer_pending/available (0.00s)
+    --- PASS: TestTransitions/slot/offer_pending/offer_pending (0.00s)
+    --- PASS: TestTransitions/slot/offer_pending/booked (0.00s)
+    --- PASS: TestTransitions/slot/offer_pending/closed (0.00s)
+    --- PASS: TestTransitions/slot/booked/available (0.00s)
+    --- PASS: TestTransitions/slot/booked/offer_pending (0.00s)
+    --- PASS: TestTransitions/slot/booked/booked (0.00s)
+    --- PASS: TestTransitions/slot/booked/closed (0.00s)
+    --- PASS: TestTransitions/slot/closed/available (0.00s)
+    --- PASS: TestTransitions/slot/closed/offer_pending (0.00s)
+    --- PASS: TestTransitions/slot/closed/booked (0.00s)
+    --- PASS: TestTransitions/slot/closed/closed (0.00s)
+    --- PASS: TestTransitions/offer/pending/pending (0.00s)
+    --- PASS: TestTransitions/offer/pending/accepted (0.00s)
+    --- PASS: TestTransitions/offer/pending/declined (0.00s)
+    --- PASS: TestTransitions/offer/pending/expired (0.00s)
+    --- PASS: TestTransitions/offer/pending/revoked (0.00s)
+    --- PASS: TestTransitions/offer/accepted/pending (0.00s)
+    --- PASS: TestTransitions/offer/accepted/accepted (0.00s)
+    --- PASS: TestTransitions/offer/accepted/declined (0.00s)
+    --- PASS: TestTransitions/offer/accepted/expired (0.00s)
+    --- PASS: TestTransitions/offer/accepted/revoked (0.00s)
+    --- PASS: TestTransitions/offer/declined/pending (0.00s)
+    --- PASS: TestTransitions/offer/declined/accepted (0.00s)
+    --- PASS: TestTransitions/offer/declined/declined (0.00s)
+    --- PASS: TestTransitions/offer/declined/expired (0.00s)
+    --- PASS: TestTransitions/offer/declined/revoked (0.00s)
+    --- PASS: TestTransitions/offer/expired/pending (0.00s)
+    --- PASS: TestTransitions/offer/expired/accepted (0.00s)
+    --- PASS: TestTransitions/offer/expired/declined (0.00s)
+    --- PASS: TestTransitions/offer/expired/expired (0.00s)
+    --- PASS: TestTransitions/offer/expired/revoked (0.00s)
+    --- PASS: TestTransitions/offer/revoked/pending (0.00s)
+    --- PASS: TestTransitions/offer/revoked/accepted (0.00s)
+    --- PASS: TestTransitions/offer/revoked/declined (0.00s)
+    --- PASS: TestTransitions/offer/revoked/expired (0.00s)
+    --- PASS: TestTransitions/offer/revoked/revoked (0.00s)
+    --- PASS: TestTransitions/waitlist/active/active (0.00s)
+    --- PASS: TestTransitions/waitlist/active/paused (0.00s)
+    --- PASS: TestTransitions/waitlist/active/satisfied (0.00s)
+    --- PASS: TestTransitions/waitlist/active/withdrawn (0.00s)
+    --- PASS: TestTransitions/waitlist/paused/active (0.00s)
+    --- PASS: TestTransitions/waitlist/paused/paused (0.00s)
+    --- PASS: TestTransitions/waitlist/paused/satisfied (0.00s)
+    --- PASS: TestTransitions/waitlist/paused/withdrawn (0.00s)
+    --- PASS: TestTransitions/waitlist/satisfied/active (0.00s)
+    --- PASS: TestTransitions/waitlist/satisfied/paused (0.00s)
+    --- PASS: TestTransitions/waitlist/satisfied/satisfied (0.00s)
+    --- PASS: TestTransitions/waitlist/satisfied/withdrawn (0.00s)
+    --- PASS: TestTransitions/waitlist/withdrawn/active (0.00s)
+    --- PASS: TestTransitions/waitlist/withdrawn/paused (0.00s)
+    --- PASS: TestTransitions/waitlist/withdrawn/satisfied (0.00s)
+    --- PASS: TestTransitions/waitlist/withdrawn/withdrawn (0.00s)
+PASS
+ok  	github.com/REinstall-SyS/WaitlistFair/internal/domain	1.024s
+?   	github.com/REinstall-SyS/WaitlistFair/internal/notifications	[no test files]
+?   	github.com/REinstall-SyS/WaitlistFair/internal/persistence	[no test files]
+?   	github.com/REinstall-SyS/WaitlistFair/internal/testutil	[no test files]
+=== RUN   Test100ConcurrentHTTPClaims
+    concurrency_test.go:47: 100 simultaneous HTTP requests; winners=1 conflicts=99 confirmed=1 wall=571.597711ms
+--- PASS: Test100ConcurrentHTTPClaims (1.31s)
+=== RUN   TestDuplicateOfferAcceptance
+--- PASS: TestDuplicateOfferAcceptance (1.05s)
+=== RUN   TestAcceptRacesExpiration
+=== RUN   TestAcceptRacesExpiration/0
+=== RUN   TestAcceptRacesExpiration/1
+=== RUN   TestAcceptRacesExpiration/2
+=== RUN   TestAcceptRacesExpiration/3
+=== RUN   TestAcceptRacesExpiration/4
+=== RUN   TestAcceptRacesExpiration/5
+=== RUN   TestAcceptRacesExpiration/6
+=== RUN   TestAcceptRacesExpiration/7
+=== RUN   TestAcceptRacesExpiration/8
+=== RUN   TestAcceptRacesExpiration/9
+=== RUN   TestAcceptRacesExpiration/10
+=== RUN   TestAcceptRacesExpiration/11
+--- PASS: TestAcceptRacesExpiration (5.18s)
+    --- PASS: TestAcceptRacesExpiration/0 (0.49s)
+    --- PASS: TestAcceptRacesExpiration/1 (0.42s)
+    --- PASS: TestAcceptRacesExpiration/2 (0.43s)
+    --- PASS: TestAcceptRacesExpiration/3 (0.42s)
+    --- PASS: TestAcceptRacesExpiration/4 (0.43s)
+    --- PASS: TestAcceptRacesExpiration/5 (0.45s)
+    --- PASS: TestAcceptRacesExpiration/6 (0.45s)
+    --- PASS: TestAcceptRacesExpiration/7 (0.42s)
+    --- PASS: TestAcceptRacesExpiration/8 (0.42s)
+    --- PASS: TestAcceptRacesExpiration/9 (0.43s)
+    --- PASS: TestAcceptRacesExpiration/10 (0.40s)
+    --- PASS: TestAcceptRacesExpiration/11 (0.41s)
+=== RUN   TestTwoWorkersAndDuplicateCancellation
+--- PASS: TestTwoWorkersAndDuplicateCancellation (0.36s)
+=== RUN   TestOverlappingSlotsSelectDifferentStudents
+--- PASS: TestOverlappingSlotsSelectDifferentStudents (0.37s)
+=== RUN   TestIndependentSlotsAllocateConcurrently
+--- PASS: TestIndependentSlotsAllocateConcurrently (0.67s)
+PASS
+ok  	github.com/REinstall-SyS/WaitlistFair/tests/concurrency	9.964s
+=== RUN   TestFIFOAndExclusionEvidence
+--- PASS: TestFIFOAndExclusionEvidence (0.86s)
+=== RUN   TestPreferencesAreRevalidatedAfterWaitingForStudentLock
+--- PASS: TestPreferencesAreRevalidatedAfterWaitingForStudentLock (0.45s)
+=== RUN   TestExpiredOffersAdvanceAndCannotAccept
+--- PASS: TestExpiredOffersAdvanceAndCannotAccept (0.71s)
+=== RUN   TestParticipationAndConflictExclusionsAreRecorded
+--- PASS: TestParticipationAndConflictExclusionsAreRecorded (0.42s)
+=== RUN   TestRevocationAndDeclineAreTerminal
+=== RUN   TestRevocationAndDeclineAreTerminal/declined
+=== RUN   TestRevocationAndDeclineAreTerminal/revoked
+--- PASS: TestRevocationAndDeclineAreTerminal (0.82s)
+    --- PASS: TestRevocationAndDeclineAreTerminal/declined (0.41s)
+    --- PASS: TestRevocationAndDeclineAreTerminal/revoked (0.41s)
+=== RUN   TestCrossOrganizationAndRecipientAuthorization
+--- PASS: TestCrossOrganizationAndRecipientAuthorization (0.96s)
+=== RUN   TestMagicLinkReplaySessionRevocationAndCSRF
+--- PASS: TestMagicLinkReplaySessionRevocationAndCSRF (0.36s)
+=== RUN   TestNotificationCrashAfterBusinessCommit
+--- PASS: TestNotificationCrashAfterBusinessCommit (0.38s)
+=== RUN   TestNotificationBackoffAndTerminalFailure
+--- PASS: TestNotificationBackoffAndTerminalFailure (0.44s)
+=== RUN   TestDatabaseConstraintsRejectBypass
+--- PASS: TestDatabaseConstraintsRejectBypass (0.46s)
+=== RUN   TestPendingOfferBlocksOverlappingBooking
+--- PASS: TestPendingOfferBlocksOverlappingBooking (0.39s)
+=== RUN   TestCancellationRetryCannotCancelReplacementBooking
+--- PASS: TestCancellationRetryCannotCancelReplacementBooking (0.48s)
+PASS
+ok  	github.com/REinstall-SyS/WaitlistFair/tests/integration	7.762s

@@ -1,25 +1,61 @@
 # Verification and benchmark methodology
 
-This file records only observed results. Before a verified CI run, the existence of tests is not a claim that they passed.
+The application source `7c7d2ce08f0ebf09135fc908f40e081e00603328` is verified by [GitHub Actions run 44349395373](https://github.com/REinstall-SyS/WaitlistFair/actions/runs/44349395373), on November 18, 2026. All three jobs passed, including the complete Docker Compose and Chromium workflow. The final documentation-only commit records logs and screenshots without changing the verified application code.
 
-## Reproduce
+## Observed results
 
-`go test -race -count=1 -v ./...` requires `TEST_DATABASE_URL` and a real PostgreSQL database. Every fixture creates a dedicated randomly named schema. The backend workflow installs Go 1.27.4 and runs PostgreSQL 18 as a service. Its artifacts contain complete test logs, Go-formatted source/module checks, and `uname`, `lscpu`, and memory information from the runner.
+| Check | Observed result |
+| --- | --- |
+| Go formatting, module consistency, vet | Passed |
+| Go unit + real PostgreSQL integration/concurrency tests, race detector enabled | Passed |
+| 100 simultaneous HTTP claims, repeated ten times | 1,000 requests; 10 confirmed bookings, 990 conflicts; no unexpected responses |
+| Same-offer acceptance, 100 simultaneous identical-key requests | One confirmed booking; all 100 requests succeeded |
+| Locked availability edit | Allocator reread changed preferences and selected the next eligible student |
+| Cancellation retry after replacement acceptance | Original cancellation remained idempotent; replacement stayed confirmed |
+| Frontend lint, TypeScript, Vitest, production build | Passed; eight Vitest tests |
+| Runtime npm dependency audit | Zero reported vulnerabilities |
+| Full Docker Compose / Chromium journey | Passed: real email, booking, expiration, audit, database restart and worker recovery |
 
-`Test100ConcurrentHTTPClaims` starts 100 goroutines behind a shared barrier. Each sends an actual HTTP POST with a different authenticated student session to one slot. It checks exactly one successful response, 99 conflicts, zero unexpected responses, and exactly one confirmed booking in PostgreSQL. Pool size is 24 connections. This measures a contention test’s total wall time; it is not steady-state throughput or a production SLA.
+Complete [backend test output](evidence/backend-tests.txt), [stress output](evidence/stress-tests.txt), and [runner conditions](evidence/runner.txt) are committed. No skipped integration tests are counted as evidence. The workflow explicitly sets TEST_DATABASE_URL and uses a real PostgreSQL 18 service.
 
-`TestDuplicateOfferAcceptance` sends 100 simultaneous HTTP requests against one real pending offer, using the same idempotency key, and requires one booking. Other tests cover lock-coordinated duplicate allocation/cancellation, overlap exclusion, independent slots, FIFO evidence, terminal offer states, session/token replay, CSRF, and cross-organization ownership.
+## Measured contention workload
 
-The acceptance/expiration test repeats a concurrent race twelve times around a short database deadline. If expiration wins, that offer must produce no booking; if acceptance wins, at most one booking exists. The test does not impose a predetermined winner on a race. Another regression test holds an earlier student's lock, waits until the allocator is blocked on it, changes availability, then releases the lock. The allocator must reread that availability, skip the now-unavailable student, select the next eligible student, and retain the evaluated preference snapshot even after a later edit.
+The final ten capacity-contention runs took **458.6-548.7 ms**, with **472.2 ms median** total HTTP workload wall time. These are observed contention-test timings with Go's race detector, not per-request latency, steady-state throughput, or a production SLA.
 
-The outbox crash test simulates SMTP acceptance without acknowledgement, expires the persisted lease, redelivers, and verifies one business offer plus two external send attempts. It proves recovery behavior and the limits of exactly-once SMTP delivery. SMTP itself is exercised by the separate real Mailpit end-to-end test.
+Each repetition used one fresh capacity-one slot, 100 distinct authenticated students, 100 goroutines released from a shared barrier, an actual local HTTP server, and a 24-connection pgx pool. The timed interval excludes fixture/schema creation and seeding. The compiled process and database caches were warm across repetitions. Both API and PostgreSQL ran on the CI host, without an external network hop.
 
-The Compose workflow builds and starts PostgreSQL, API, worker, Next.js, and Mailpit; Playwright then signs in through real email, joins a waitlist, cancels a booking, accepts an offer, checks audit evidence, and captures actual UI screenshots. Fault mode restarts the database while committed work awaits a stopped notification worker, then verifies recovery and expiration advancement. It tests restart persistence, not every possible mid-commit network partition.
+Runner: Linux x86-64 GitHub-hosted VM, four visible vCPUs, AMD EPYC 7763, 15 GiB RAM, Go 1.27.4, PostgreSQL 18. This is shared cloud infrastructure. Results vary with runner hardware and load; no performance claim is extrapolated beyond this workload.
 
-## Local environment
+Reproduce with a disposable database:
 
-The authoring Windows host has Node 26.13.0 and GitHub CLI. It has no Docker, Go, or PostgreSQL installation on PATH. An official checksum-verified portable Go download was blocked by Windows Application Control; WSL is not installed. Backend/Compose verification therefore uses the recorded Linux GitHub Actions environment. Local frontend type checking and the three Vitest logic tests passed during implementation. The local Windows standalone production build passed after granting the required filesystem access. The Linux Compose build is the deployment verification target.
+```sh
+export TEST_DATABASE_URL='postgres://user:password@localhost:5432/waitlistfair_test?sslmode=disable'
+go test -race -count=1 -v ./...
+go test -race -count=10 -run Test100ConcurrentHTTPClaims -v ./tests/concurrency
+```
 
-## Observed CI results
+PowerShell: set `$env:TEST_DATABASE_URL='...'` and run the same Go commands, or `scripts/stress.ps1`. Every fixture creates a randomly named test schema and removes its own schema afterward. Tests explicitly skip when the database variable is missing; a skip is not a database correctness result.
 
-Pending the first complete CI run. No load latency or throughput measurement is claimed until logs are recorded here.
+## What the tests establish
+
+Capacity tests check one winner, 99 conflicts, zero unexpected responses, and exactly one confirmed booking. Duplicate acceptance uses 100 real simultaneous HTTP requests against one offer. Other tests cover overlapping pending/confirmed reservations, independent allocations, FIFO ties and exclusion evidence, terminal offer states, recipient/organization authorization, magic-token replay, session revocation, and CSRF.
+
+The acceptance/expiration test repeats a race twelve times around a short database deadline. It permits either valid winner while rejecting a booking from an expired offer. A lock-wait regression holds an earlier student's row lock, waits until the allocator is blocked, changes availability, and releases the lock. The engine must reread it, select the next eligible student, and retain the evaluated snapshot despite later edits.
+
+A cancellation regression cancels the original booking, accepts its replacement, and retries the original cancellation through both the domain service and HTTP API. The replacement must remain confirmed.
+
+The notification crash test simulates SMTP acceptance without acknowledgement, expires the persisted lease, and redelivers. It checks one business offer and two external send attempts, demonstrating the limits of exactly-once SMTP delivery. Real SMTP delivery is tested separately with Mailpit in the complete browser journey.
+
+Availability tests include spring gaps, both repeated fall-hour occurrences, intervals crossing an offset transition, second-precision boundaries, and whole-appointment matching. Frontend tests also reject nonexistent local date entry, return both repeated-time choices, handle quarter-hour offsets, and reject calendar normalization. Displayed times retain offset-distinguishing zone abbreviations.
+
+## Complete application demonstration
+
+The Compose job builds PostgreSQL, Go API, worker, Next.js, and Mailpit. Chromium signs in using real captured magic-link emails, joins a waitlist, cancels a booking, receives and accepts an offer, views the confirmed appointment and recorded explanation, and checks the audit event. It also creates availability through the admin interface and checks mobile navigation focus/Escape behavior and layout width.
+
+Fault mode stops the notification worker, commits a cancellation, restarts PostgreSQL, restarts the worker, verifies durable delivery, forces a demonstration offer deadline, rejects the expired offer, and accepts the next recipient's offer. It tests restart persistence rather than every possible mid-commit partition. Screenshots under `docs/screenshots` come from the actual passing Compose application.
+
+## Authoring environment and limits
+
+The Windows authoring host has Node 26.13.0 and GitHub CLI, but no Docker, Go, or PostgreSQL installed on PATH; WSL is absent. An official checksum-verified Go download was blocked by Windows Application Control. Backend and Compose verification therefore used Linux CI. Local frontend lint, type checking, eight logic tests, and the standalone production build passed. Temporary portable tooling was removed after use.
+
+The full development dependency audit reports an unpatched development-tool glob ReDoS advisory; the runtime-only audit is clean. See SECURITY.md. These results do not constitute an independent security assessment or regulatory certification.

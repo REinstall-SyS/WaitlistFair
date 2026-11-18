@@ -1,0 +1,32 @@
+=== RUN   Test100ConcurrentHTTPClaims
+    concurrency_test.go:47: 100 simultaneous HTTP requests; winners=1 conflicts=99 confirmed=1 wall=506.641646ms
+--- PASS: Test100ConcurrentHTTPClaims (0.98s)
+=== RUN   Test100ConcurrentHTTPClaims
+    concurrency_test.go:47: 100 simultaneous HTTP requests; winners=1 conflicts=99 confirmed=1 wall=463.956397ms
+--- PASS: Test100ConcurrentHTTPClaims (0.94s)
+=== RUN   Test100ConcurrentHTTPClaims
+    concurrency_test.go:47: 100 simultaneous HTTP requests; winners=1 conflicts=99 confirmed=1 wall=472.882127ms
+--- PASS: Test100ConcurrentHTTPClaims (0.94s)
+=== RUN   Test100ConcurrentHTTPClaims
+    concurrency_test.go:47: 100 simultaneous HTTP requests; winners=1 conflicts=99 confirmed=1 wall=548.673941ms
+--- PASS: Test100ConcurrentHTTPClaims (1.02s)
+=== RUN   Test100ConcurrentHTTPClaims
+    concurrency_test.go:47: 100 simultaneous HTTP requests; winners=1 conflicts=99 confirmed=1 wall=458.551627ms
+--- PASS: Test100ConcurrentHTTPClaims (0.91s)
+=== RUN   Test100ConcurrentHTTPClaims
+    concurrency_test.go:47: 100 simultaneous HTTP requests; winners=1 conflicts=99 confirmed=1 wall=471.55577ms
+--- PASS: Test100ConcurrentHTTPClaims (0.94s)
+=== RUN   Test100ConcurrentHTTPClaims
+    concurrency_test.go:47: 100 simultaneous HTTP requests; winners=1 conflicts=99 confirmed=1 wall=545.749071ms
+--- PASS: Test100ConcurrentHTTPClaims (1.08s)
+=== RUN   Test100ConcurrentHTTPClaims
+    concurrency_test.go:47: 100 simultaneous HTTP requests; winners=1 conflicts=99 confirmed=1 wall=474.897479ms
+--- PASS: Test100ConcurrentHTTPClaims (0.96s)
+=== RUN   Test100ConcurrentHTTPClaims
+    concurrency_test.go:47: 100 simultaneous HTTP requests; winners=1 conflicts=99 confirmed=1 wall=462.129156ms
+--- PASS: Test100ConcurrentHTTPClaims (0.91s)
+=== RUN   Test100ConcurrentHTTPClaims
+    concurrency_test.go:47: 100 simultaneous HTTP requests; winners=1 conflicts=99 confirmed=1 wall=465.474206ms
+--- PASS: Test100ConcurrentHTTPClaims (0.92s)
+PASS
+ok  	github.com/REinstall-SyS/WaitlistFair/tests/concurrency	10.632s
